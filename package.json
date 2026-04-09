@@ -1,0 +1,52 @@
+{
+  "name": "@agentskillmania/sandbox",
+  "version": "0.1.0",
+  "description": "Unified WASM sandbox for busybox and micropython",
+  "main": "lib/index.js",
+  "bin": {
+    "exec-in-sandbox": "bin/exec-in-sandbox.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install-runtime.js",
+    "test": "node scripts/test-runtime.js",
+    "lint": "eslint src/ lib/",
+    "format": "prettier --write \"src/**/*.js\" \"lib/**/*.js\""
+  },
+  "keywords": [
+    "wasm",
+    "wasi",
+    "wasmtime",
+    "busybox",
+    "micropython",
+    "sandbox",
+    "webassembly"
+  ],
+  "author": {
+    "name": "yusangeng",
+    "email": "yusangeng@outlook.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agentskillmania/flyweight.git"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "@agentskillmania/settings-yaml": "^0.1.0",
+    "chalk": "^4.1.2",
+    "commander": "^11.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ]
+}
