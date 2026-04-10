@@ -75,7 +75,25 @@ exec-in-sandbox python script.py
 # 使用共享文件系统
 exec-in-sandbox busybox -c "echo 'print(42)' > .sandbox/script.py"
 exec-in-sandbox python .sandbox/script.py
+
+# 命令行选项
+exec-in-sandbox --timeout 10000 --allow-network busybox curl https://example.com
+exec-in-sandbox --command-allowlist "ls,cat,echo" busybox ls -la
+exec-in-sandbox --network-allowlist "*.github.com,registry.npmjs.org" python -c "import urllib; ..."
 ```
+
+**全局选项：**
+
+| 选项 | 说明 |
+|------|------|
+| `--config <path>` | 配置文件路径 |
+| `--sandbox-dir <dir>` | 沙箱目录（默认：`.sandbox`） |
+| `--timeout <ms>` | 执行超时时间（毫秒，默认：`5000`） |
+| `--allow-network` | 允许网络访问 |
+| `--command-allowlist <cmds>` | 命令白名单（逗号分隔） |
+| `--command-blocklist <cmds>` | 命令黑名单（逗号分隔） |
+| `--network-allowlist <domains>` | 网络白名单（逗号分隔） |
+| `--network-blocklist <domains>` | 网络黑名单（逗号分隔） |
 
 ### Node.js SDK
 

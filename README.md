@@ -75,7 +75,25 @@ exec-in-sandbox python script.py
 # Use shared filesystem
 exec-in-sandbox busybox -c "echo 'print(42)' > .sandbox/script.py"
 exec-in-sandbox python .sandbox/script.py
+
+# Command-line options
+exec-in-sandbox --timeout 10000 --allow-network busybox curl https://example.com
+exec-in-sandbox --command-allowlist "ls,cat,echo" busybox ls -la
+exec-in-sandbox --network-allowlist "*.github.com,registry.npmjs.org" python -c "import urllib; ..."
 ```
+
+**Global Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--config <path>` | Configuration file path |
+| `--sandbox-dir <dir>` | Sandbox directory (default: `.sandbox`) |
+| `--timeout <ms>` | Execution timeout in milliseconds (default: `5000`) |
+| `--allow-network` | Allow network access |
+| `--command-allowlist <cmds>` | Command allowlist (comma-separated) |
+| `--command-blocklist <cmds>` | Command blocklist (comma-separated) |
+| `--network-allowlist <domains>` | Network allowlist (comma-separated) |
+| `--network-blocklist <domains>` | Network blocklist (comma-separated) |
 
 ### Node.js SDK
 
