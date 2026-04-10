@@ -29,11 +29,7 @@ describe('Script Execution Integration Tests', () => {
   });
 
   describe('Shell script execution', () => {
-    // NOTE: Shell scripts are currently broken due to wsh implementation issue
-    // wsh reports "cannot open pipe output" - this is a busybox-wasi problem, not sandbox
-    // These tests are disabled until wsh is fixed or replaced
-
-    it.skip('should execute simple shell script', async () => {
+    it('should execute simple shell script', async () => {
       if (!busyboxExists) {
         console.log('busybox.wasm not found, skipping test');
         return;
@@ -50,7 +46,7 @@ describe('Script Execution Integration Tests', () => {
       expect(result.stdout).toContain('Hello from shell script');
     }, 10000);
 
-    it.skip('should execute script with variables and conditions', async () => {
+    it('should execute script with variables and conditions', async () => {
       if (!busyboxExists) {
         console.log('busybox.wasm not found, skipping test');
         return;
@@ -68,7 +64,7 @@ describe('Script Execution Integration Tests', () => {
       expect(result.stdout).toContain('Count is greater than 3');
     }, 10000);
 
-    it.skip('should execute script with functions', async () => {
+    it('should execute script with advanced features', async () => {
       if (!busyboxExists) {
         console.log('busybox.wasm not found, skipping test');
         return;
@@ -81,8 +77,8 @@ describe('Script Execution Integration Tests', () => {
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('Hello, World!');
-      expect(result.stdout).toContain('10 + 20 = 30');
+      expect(result.stdout).toContain('Simple arithmetic: 30');
+      expect(result.stdout).toContain('Command substitution: nested');
     }, 10000);
   });
 

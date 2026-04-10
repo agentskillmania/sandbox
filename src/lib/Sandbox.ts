@@ -123,6 +123,9 @@ export class Sandbox {
         return;
       }
 
+      // wsh 需要 /tmp 目录来创建管道临时文件
+      const isWsh = args.includes('wsh') || args.some((a) => a.includes('wsh'));
+
       // Build wasmtime arguments
       const wasmtimeArgs = [
         '-W',
@@ -131,6 +134,7 @@ export class Sandbox {
         'cli=y',
         '--dir',
         this.sandboxDir,
+        ...(isWsh ? ['--dir', '/tmp'] : []),
         ...this._buildNetworkArgs(),
         modulePath,
         ...args,
@@ -159,9 +163,14 @@ export class Sandbox {
         clearTimeout(timer);
         if (timedOut) return;
 
+        // wsh 的管道输出会写到 stderr（freopen 无法恢复 stdout）
+        // 将 stderr 合并到 stdout，与 busybox-wasi 测试框架行为一致
+        const finalStdout = isWsh && stderr ? stdout + '\n' + stderr : stdout;
+        const finalStderr = isWsh ? '' : stderr;
+
         resolve({
-          stdout,
-          stderr,
+          stdout: finalStdout,
+          stderr: finalStderr,
           exitCode: code ?? 0,
         });
       });
@@ -298,7 +307,7 @@ export class Sandbox {
    * Note: Script arguments are not supported due to wsh limitations
    */
   private async _executeShellScript(scriptPath: string, scriptArgs: string[]): Promise<ExecResult> {
-    const scriptContent = readFileSync(scriptPath, 'utf-8');
+    let scriptContent = readFileSync(scriptPath, 'utf-8');
 
     // Warn if script arguments are provided (not supported by wsh)
     if (scriptArgs.length > 0) {
@@ -315,16 +324,22 @@ export class Sandbox {
 
       // Check if shebang references a supported interpreter
       if (shebang.includes('sh') || shebang.includes('bash') || shebang.includes('wsh')) {
-        // Supported - remove shebang and execute
-        const contentWithoutShebang = lines.slice(1).join('\n');
-        return this._execWasm(this.wasmPaths.busybox, ['wsh', '-c', contentWithoutShebang]);
+        // Supported - remove shebang
+        scriptContent = lines.slice(1).join('\n');
       } else {
         throw new Error(`Unsupported shebang: ${firstLine}. Only sh/bash/wsh are supported.`);
       }
     }
 
-    // No shebang - execute as is
-    return this._execWasm(this.wasmPaths.busybox, ['wsh', '-c', scriptContent]);
+    // wsh requires semicolons instead of newlines for command separation
+    // Filter out empty lines and replace remaining newlines with semicolons
+    const commands = scriptContent
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .join('; ');
+
+    return this._execWasm(this.wasmPaths.busybox, ['wsh', '-c', commands]);
   }
 
   /**
