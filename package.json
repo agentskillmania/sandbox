@@ -1,9 +1,11 @@
 {
   "name": "@agentskillmania/sandbox",
   "version": "0.1.0",
-  "private": false,
   "description": "WASM sandbox for busybox and micropython",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
