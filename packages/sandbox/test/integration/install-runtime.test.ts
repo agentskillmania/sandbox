@@ -35,7 +35,7 @@ describe('Runtime Installation Integration Tests', () => {
       // Try to run wasmtime
       const result = execSync(`"${wasmtimePath}" --version`, {
         encoding: 'utf-8',
-        stdio: 'pipe'
+        stdio: 'pipe',
       });
       expect(result).toBeTruthy();
       expect(result.length).toBeGreaterThan(0);

@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SecurityConfigManager, initializeSecurityConfig, getSecurityConfig } from '../../../src/lib/config.js';
+import {
+  SecurityConfigManager,
+  initializeSecurityConfig,
+  getSecurityConfig,
+} from '../../../src/lib/config.js';
 
 // Mock @agentskillmania/settings-yaml
 vi.mock('@agentskillmania/settings-yaml', () => ({
@@ -53,6 +57,16 @@ describe('SecurityConfigManager', () => {
         list: ['rm', 'format', 'fdisk'],
       });
     });
+
+    it('should return empty object when commands not configured', async () => {
+      // 测试未覆盖的分支：securityConfig.commands 为空时返回 {}
+      const emptyConfig = new SecurityConfigManager();
+      const commandSecurity = emptyConfig.getCommandSecurity();
+
+      expect(commandSecurity).toEqual({});
+      expect(commandSecurity.mode).toBeUndefined();
+      expect(commandSecurity.list).toBeUndefined();
+    });
   });
 
   describe('getNetworkSecurity', () => {
@@ -64,6 +78,16 @@ describe('SecurityConfigManager', () => {
         mode: 'blacklist',
         list: ['*.malicious.com', '*.ads.com'],
       });
+    });
+
+    it('should return empty object when network not configured', async () => {
+      // 测试未覆盖的分支：securityConfig.network 为空时返回 {}
+      const emptyConfig = new SecurityConfigManager();
+      const networkSecurity = emptyConfig.getNetworkSecurity();
+
+      expect(networkSecurity).toEqual({});
+      expect(networkSecurity.mode).toBeUndefined();
+      expect(networkSecurity.list).toBeUndefined();
     });
   });
 });

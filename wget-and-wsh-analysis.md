@@ -3,6 +3,7 @@
 ## 问题 1：wget 公网连接失败
 
 ### 现象
+
 ```
 wget http://example.com/
 wget: can't connect to remote host (104.20.23.154): Connection refused
@@ -19,16 +20,16 @@ wget: can't connect to remote host (104.20.23.154): Connection refused
 
 2. **公网连接失败** ❌
    - 连接 example.com 失败
-   - 连接 www.baidu.com 失败  
+   - 连接 www.baidu.com 失败
    - 错误：Connection refused
 
 ### 可能原因
 
-| 原因 | 可能性 | 说明 |
-|------|--------|------|
-| 防火墙/网络策略 | 🟡 中 | 可能阻止了 outgoing 连接 |
-| wasmtime 网络配置 | 🟢 低 | 参数正确（已验证） |
-| WASI Preview2 限制 | 🟡 中 | 可能对某些类型的连接有限制 |
+| 原因               | 可能性 | 说明                       |
+| ------------------ | ------ | -------------------------- |
+| 防火墙/网络策略    | 🟡 中  | 可能阻止了 outgoing 连接   |
+| wasmtime 网络配置  | 🟢 低  | 参数正确（已验证）         |
+| WASI Preview2 限制 | 🟡 中  | 可能对某些类型的连接有限制 |
 
 **结论：wget 功能本身是正常的，问题在于公网网络访问。**
 
@@ -37,6 +38,7 @@ wget: can't connect to remote host (104.20.23.154): Connection refused
 ## 问题 2：wsh "cannot open pipe output"
 
 ### 现象
+
 ```
 wsh -c "echo test"
 wsh: cannot open pipe output
@@ -71,13 +73,13 @@ if (freopen(out_path, "w", stdout) == NULL) {
 
 ### 实际能力
 
-| 功能 | 状态 | 说明 |
-|------|------|------|
-| 直接调用 applet | ✅ | `echo test` 正常工作 |
-| 管道执行 | ❌ | `echo \| cat` 失败 |
-| 输出重定向 | ❌ | `echo > file` 失败 |
-| 变量展开 | ❓ | 无法测试（freopen 失败） |
-| 命令替换 | ❓ | 无法测试（需要管道） |
+| 功能            | 状态 | 说明                     |
+| --------------- | ---- | ------------------------ |
+| 直接调用 applet | ✅   | `echo test` 正常工作     |
+| 管道执行        | ❌   | `echo \| cat` 失败       |
+| 输出重定向      | ❌   | `echo > file` 失败       |
+| 变量展开        | ❓   | 无法测试（freopen 失败） |
+| 命令替换        | ❓   | 无法测试（需要管道）     |
 
 **结论：wsh 的设计理念是正确的，但 WASI Preview2 的 `FILE *const` 限制导致实现无法工作。**
 
@@ -86,11 +88,13 @@ if (freopen(out_path, "w", stdout) == NULL) {
 ## 综合结论
 
 ### wget 状态
+
 - **功能实现**：✅ 完全正常
 - **本地网络**：✅ 完全支持
 - **公网访问**：❌ 受网络策略限制（非代码问题）
 
 ### wsh 状态
+
 - **架构设计**：✅ 合理的变通方案
 - **实际实现**：❌ 受 WASI Preview2 `FILE *const` 限制
 - **可用性**：❌ 基本不可用

@@ -3,31 +3,31 @@ set -e
 
 echo "Running pre-commit checks..."
 
-# 1. 运行单元测试
+# 1. 运行所有包的单元测试
 echo "▶ Running unit tests..."
-if ! npm run test:unit; then
+if ! pnpm -r --filter './packages/*' run test:unit; then
     echo "❌ Unit tests failed. Commit aborted."
     exit 1
 fi
 
-# 2. 运行 build
+# 2. 运行所有包的 build
 echo "▶ Running build..."
-if ! npm run build; then
+if ! pnpm -r --filter './packages/*' run build; then
     echo "❌ Build failed. Commit aborted."
     exit 1
 fi
 
-# 3. 检查代码格式（不自动修复）
+# 3. 检查代码格式
 echo "▶ Checking code format..."
-if ! npx prettier --check "src/**/*.ts" 2>/dev/null; then
-    echo "❌ Code format check failed. Please run 'npm run format' to fix formatting issues."
+if ! npx prettier --check "packages/*/src/**/*.{ts,js}"; then
+    echo "❌ Code format check failed. Please run 'pnpm format' to fix."
     exit 1
 fi
 
-# 4. 检查 ESLint（不自动修复）
+# 4. 运行 lint
 echo "▶ Running lint check..."
-if ! npm run lint; then
-    echo "❌ Lint check failed. Please fix the linting issues above."
+if ! pnpm lint; then
+    echo "❌ Lint check failed. Please fix the linting issues."
     exit 1
 fi
 

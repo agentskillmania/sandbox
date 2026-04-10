@@ -68,7 +68,7 @@ describe('Sandbox Integration Tests', () => {
     it('should enforce command allowlist', async () => {
       const sandbox = new Sandbox({
         sandboxDir: '.sandbox-test',
-        commandAllowlist: ['ls', 'echo']
+        commandAllowlist: ['ls', 'echo'],
       });
 
       // Should reject commands not in allowlist
@@ -78,7 +78,7 @@ describe('Sandbox Integration Tests', () => {
     it('should enforce command blocklist', async () => {
       const sandbox = new Sandbox({
         sandboxDir: '.sandbox-test',
-        commandBlocklist: ['rm', 'format']
+        commandBlocklist: ['rm', 'format'],
       });
 
       // Should reject commands in blocklist

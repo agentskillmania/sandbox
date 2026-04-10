@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Sandbox } from '../../../src/lib/Sandbox.js';
 import { SecurityError, TimeoutError } from '../../../src/lib/types.js';
+import { readFileSync, existsSync } from 'node:fs';
 
 // Mock runtime functions
 vi.mock('../../../src/lib/runtime.js', async (importOriginal) => {
@@ -13,7 +14,12 @@ vi.mock('../../../src/lib/runtime.js', async (importOriginal) => {
       micropython: '/mock/micropython.wasm',
     })),
     getRuntimeVersions: vi.fn(() => ({
-      wasmtime: { found: true, version: '43.0.0', path: '/mock/wasmtime', expectedVersion: 'v43.0.0' },
+      wasmtime: {
+        found: true,
+        version: '43.0.0',
+        path: '/mock/wasmtime',
+        expectedVersion: 'v43.0.0',
+      },
       busybox: { found: true, path: '/mock/busybox.wasm' },
       micropython: { found: true, path: '/mock/micropython.wasm' },
     })),
@@ -112,14 +118,18 @@ describe('Sandbox', () => {
       const sb = new Sandbox({ commandAllowlist: ['ls', 'cat'] });
 
       await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow(SecurityError);
-      await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow("Command 'rm' is not in the allowlist");
+      await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow(
+        "Command 'rm' is not in the allowlist"
+      );
     });
 
     it('should throw SecurityError when command in blocklist', async () => {
       const sb = new Sandbox({ commandBlocklist: ['rm', 'format'] });
 
       await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow(SecurityError);
-      await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow("Command 'rm' is in the blocklist");
+      await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow(
+        "Command 'rm' is in the blocklist"
+      );
     });
 
     it('should allow command in allowlist', async () => {
@@ -229,6 +239,50 @@ describe('Sandbox', () => {
       expect(result.exitCode).toBe(0);
       // .pl files are not supported, so they're passed to busybox as normal args
       expect(mockSpawn).toHaveBeenCalled();
+    });
+
+    it('should handle different shebang types in shell scripts', async () => {
+      // 测试 shebang 解析分支覆盖
+      const { readFileSync } = await import('node:fs');
+
+      // 测试不支持的 shebang (行 326-330)
+      vi.mocked(readFileSync).mockReturnValueOnce('#!/usr/bin/perl\nprint("test")');
+      await expect(sandbox.runShell('busybox', ['test.sh'])).rejects.toThrow();
+
+      // 测试支持的 shebang
+      vi.mocked(readFileSync).mockReturnValueOnce('#!/bin/sh\necho test');
+      let result = await sandbox.runShell('busybox', ['test.sh']);
+      expect(result.exitCode).toBe(0);
+
+      vi.mocked(readFileSync).mockReturnValueOnce('#!/bin/bash\necho test');
+      result = await sandbox.runShell('busybox', ['test.sh']);
+      expect(result.exitCode).toBe(0);
+    });
+  });
+
+  describe('runPythonScript - error cases', () => {
+    it('should handle script file not found', async () => {
+      // 测试未覆盖的分支：脚本文件不存在 (行 388-390)
+      const { existsSync } = await import('node:fs');
+      vi.mocked(existsSync).mockReturnValueOnce(false);
+
+      await expect(sandbox.runPythonScript('nonexistent.py', [])).rejects.toThrow(
+        'Script file not found'
+      );
+    });
+
+    it('should handle script arguments with warning', async () => {
+      // 测试未覆盖的分支：Python 脚本带参数 (行 357-359)
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await sandbox.runPythonScript('test.py', ['arg1']);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Warning: Script arguments are not supported for .py files in WASM sandbox'
+      );
+      expect(result.exitCode).toBe(0);
+
+      consoleSpy.mockRestore();
     });
   });
 });

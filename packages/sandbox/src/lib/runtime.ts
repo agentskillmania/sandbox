@@ -70,3 +70,56 @@ export function getRuntimeVersions() {
     },
   };
 }
+
+/**
+ * Ensure runtime is installed
+ * If wasmtime doesn't exist, automatically install it
+ */
+export async function ensureRuntime(): Promise<void> {
+  // Fast check
+  if (checkRuntimeReady().ready) {
+    return;
+  }
+
+  // Not installed, install it
+  console.error('⏳ Wasmtime not found. Installing...');
+  const success = await installRuntime();
+
+  if (!success) {
+    throw new Error('Failed to install wasmtime runtime');
+  }
+  console.error('✅ Wasmtime installed successfully.');
+}
+
+/**
+ * Fast check if runtime is ready
+ * Does not execute any download operations
+ */
+export function checkRuntimeReady(): { ready: boolean } {
+  const wasmtimePath = getWasmtimeExecutable();
+  return { ready: existsSync(wasmtimePath) };
+}
+
+/**
+ * Install runtime (internal)
+ * Returns true if successful
+ */
+async function installRuntime(): Promise<boolean> {
+  try {
+    const installScript = join(
+      process.cwd(),
+      'packages',
+      'sandbox',
+      'scripts',
+      'install-runtime.cjs'
+    );
+    execSync(`node "${installScript}"`, {
+      stdio: 'inherit',
+      cwd: process.cwd(),
+    });
+    return true;
+  } catch (error) {
+    console.error('Failed to install runtime:', error);
+    return false;
+  }
+}

@@ -4,6 +4,8 @@ import {
   checkInstalledWasmtime,
   getWasmPaths,
   getRuntimeVersions,
+  checkRuntimeReady,
+  ensureRuntime,
 } from '../../../src/lib/runtime.js';
 import { existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -84,7 +86,9 @@ describe('runtime', () => {
     it('should return runtime version information', () => {
       vi.mocked(existsSync).mockImplementation((path) => {
         if (typeof path === 'string') {
-          return path.includes('wasmtime') || path.includes('busybox') || path.includes('micropython');
+          return (
+            path.includes('wasmtime') || path.includes('busybox') || path.includes('micropython')
+          );
         }
         return false;
       });
@@ -128,6 +132,69 @@ describe('runtime', () => {
 
       const versions = getRuntimeVersions();
       expect(versions.micropython.found).toBe(false);
+    });
+  });
+
+  describe('checkRuntimeReady', () => {
+    it('should return ready: true when wasmtime exists', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      const result = checkRuntimeReady();
+      expect(result.ready).toBe(true);
+    });
+
+    it('should return ready: false when wasmtime does not exist', () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const result = checkRuntimeReady();
+      expect(result.ready).toBe(false);
+    });
+  });
+
+  describe('ensureRuntime', () => {
+    it('should skip installation if runtime exists', async () => {
+      vi.mocked(existsSync).mockReturnValue(true);
+
+      await expect(ensureRuntime()).resolves.not.toThrow();
+      expect(execSync).not.toHaveBeenCalled();
+    });
+
+    it('should install runtime if missing', async () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+      vi.mocked(execSync).mockReturnValue('');
+
+      await expect(ensureRuntime()).resolves.not.toThrow();
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('install-runtime'),
+        expect.objectContaining({
+          stdio: 'inherit',
+        })
+      );
+    });
+
+    it('should throw error if installation fails', async () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+      vi.mocked(execSync).mockImplementation(() => {
+        throw new Error('Installation failed');
+      });
+
+      await expect(ensureRuntime()).rejects.toThrow('Failed to install wasmtime runtime');
+    });
+
+    it('should use correct install script path', async () => {
+      vi.mocked(existsSync).mockReturnValue(false);
+      const originalCwd = process.cwd;
+      process.cwd = vi.fn(() => '/mock/cwd') as any;
+      vi.mocked(execSync).mockReturnValue('');
+
+      await ensureRuntime();
+
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('/mock/cwd/packages/sandbox/scripts/install-runtime.cjs'),
+        expect.any(Object)
+      );
+
+      process.cwd = originalCwd;
     });
   });
 });

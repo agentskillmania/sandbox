@@ -15,6 +15,8 @@ export {
   getRuntimeVersions,
   checkInstalledWasmtime,
   getWasmtimeExecutable,
+  checkRuntimeReady,
+  ensureRuntime,
 } from './lib/runtime.js';
 export type {
   ExecResult,

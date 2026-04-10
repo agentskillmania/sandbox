@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { getWasmtimeExecutable } from '../../src/lib/runtime.js';
 
 describe('CLI Integration Tests', () => {
-  const cliPath = join(process.cwd(), 'bin/exec-in-sandbox.js');
+  const cliPath = join(process.cwd(), 'bin/exec-in-sandbox');
   let wasmtimeInstalled: boolean;
 
   beforeAll(() => {
@@ -17,7 +17,7 @@ describe('CLI Integration Tests', () => {
       try {
         const output = execSync(`node "${cliPath}" version`, {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
         expect(output).toContain('@agentskillmania/sandbox');
         expect(output).toContain('0.1.0');
@@ -36,7 +36,7 @@ describe('CLI Integration Tests', () => {
     it('should show help for busybox command', () => {
       const output = execSync(`node "${cliPath}" busybox --help`, {
         encoding: 'utf-8',
-        stdio: 'pipe'
+        stdio: 'pipe',
       });
       expect(output).toContain('Execute Shell commands');
     });
@@ -44,7 +44,7 @@ describe('CLI Integration Tests', () => {
     it('should show help for python command', () => {
       const output = execSync(`node "${cliPath}" python --help`, {
         encoding: 'utf-8',
-        stdio: 'pipe'
+        stdio: 'pipe',
       });
       expect(output).toContain('Execute Python code');
     });
@@ -55,7 +55,7 @@ describe('CLI Integration Tests', () => {
       try {
         execSync(`node "${cliPath}" invalid-command`, {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
         // Should not reach here
         expect(true).toBe(false);
@@ -70,7 +70,7 @@ describe('CLI Integration Tests', () => {
         execSync(`node "${cliPath}" busybox --timeout=1000 echo test`, {
           encoding: 'utf-8',
           stdio: 'pipe',
-          timeout: 5000
+          timeout: 5000,
         });
       } catch (error: any) {
         // May fail if WASM not found, but the option should be parsed
@@ -86,7 +86,7 @@ describe('CLI Integration Tests', () => {
       try {
         execSync(`node "${cliPath}" --sandbox-dir=.test-sandbox busybox echo test`, {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
       } catch (error: any) {
         // May fail if WASM not found, but the option should be parsed
@@ -99,7 +99,7 @@ describe('CLI Integration Tests', () => {
       try {
         execSync(`node "${cliPath}" --allow-network busybox echo test`, {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
       } catch (error: any) {
         expect(error.message).not.toContain('unknown option');
@@ -111,7 +111,7 @@ describe('CLI Integration Tests', () => {
       try {
         execSync(`node "${cliPath}" --command-allowlist=ls,cat busybox ls`, {
           encoding: 'utf-8',
-          stdio: 'pipe'
+          stdio: 'pipe',
         });
       } catch (error: any) {
         expect(error.message).not.toContain('unknown option');
@@ -124,7 +124,7 @@ describe('CLI Integration Tests', () => {
     it('should have install-runtime command available', () => {
       const output = execSync(`node "${cliPath}" install-runtime --help 2>&1 || true`, {
         encoding: 'utf-8',
-        stdio: 'pipe'
+        stdio: 'pipe',
       });
       // Command should exist (may show help or execute)
       expect(output).toBeTruthy();
