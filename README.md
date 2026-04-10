@@ -4,8 +4,8 @@ WASM sandbox tool supporting busybox and micropython.
 
 ## Features
 
-- 🚀 **Lightweight**: Single wasmtime process ~10MB vs Docker's ~1GB
-- ⚡ **Fast Cold Start**: <200ms startup time vs Docker's >1s
+- 🚀 **Lightweight**: Single wasmtime process ~3MB vs Docker's ~1GB
+- ⚡ **Fast Execution**: ~12ms average command time vs Docker's ~100ms
 - 🔒 **Secure Isolation**: WASM sandbox with controlled filesystem access
 - 🛠️ **Easy to Use**: CLI tool and Node.js SDK
 
@@ -276,11 +276,13 @@ X=$((10 + 20))  # Arithmetic expansion - will fail!
 
 ## Performance
 
-| Metric       | @agentskillmania/sandbox | Docker |
-| ------------ | ------------------------ | ------ |
-| Cold Start   | ~200ms                   | >1s    |
-| Memory Usage | ~50MB                    | >1GB   |
-| Disk Usage   | ~10MB                    | >100MB |
+| Metric                  | @agentskillmania/sandbox | Docker |
+| ----------------------- | ------------------------ | ------ |
+| Sandbox Instance Create | ~0.1ms                   | —      |
+| First Command Execution | ~20ms                    | >1s    |
+| Average Command Time    | ~12ms                    | ~100ms |
+| Memory Growth (50 runs) | ~4MB                     | >1GB   |
+| Disk Usage              | ~3MB                     | >100MB |
 
 ## Development
 
