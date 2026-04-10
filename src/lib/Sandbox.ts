@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdirp } from 'mkdirp';
@@ -169,6 +169,12 @@ export class Sandbox {
    * - '--list': lists all busybox commands
    * - '--list-full': lists all commands with full paths
    * - '--help': shows busybox help
+   *
+   * Script file execution:
+   * - If first arg is a script file (.sh, .py, .pl), execute it appropriately
+   * - .sh files: read content and execute via wsh -c
+   * - .py files: execute via micropython.wasm
+   * - .pl files: execute via micropython.wasm
    */
   async runShell(command: string, args: string[] = []): Promise<ExecResult> {
     // Skip validation for built-in busybox commands
@@ -178,9 +184,134 @@ export class Sandbox {
       this._validateCommand(command);
     }
 
+    // Check if first argument is a script file
+    if (args.length > 0 && this._isScriptFile(args[0])) {
+      return this._executeScript(args[0], args.slice(1));
+    }
+
     // Build args: pass command and args directly to busybox
     const wasmArgs = command === '' ? args : [command, ...args];
     return this._execWasm(this.wasmPaths.busybox, wasmArgs);
+  }
+
+  /**
+   * Check if a path is a script file based on extension
+   */
+  private _isScriptFile(path: string): boolean {
+    return path.endsWith('.sh') || path.endsWith('.py');
+  }
+
+  /**
+   * Execute a script file based on its type
+   * First checks for shebang, then falls back to file extension
+   */
+  private async _executeScript(scriptPath: string, scriptArgs: string[]): Promise<ExecResult> {
+    // Check if script exists
+    if (!existsSync(scriptPath)) {
+      throw new Error(`Script file not found: ${scriptPath}`);
+    }
+
+    // Try to detect interpreter from shebang
+    const shebangInterpreter = this._detectShebangInterpreter(scriptPath);
+
+    if (shebangInterpreter) {
+      switch (shebangInterpreter) {
+        case 'sh':
+        case 'bash':
+        case 'wsh':
+          return this._executeShellScript(scriptPath, scriptArgs);
+        case 'python':
+        case 'python3':
+        case 'micropython':
+          return this._execWasm(this.wasmPaths.micropython, [scriptPath, ...scriptArgs]);
+        default:
+          throw new Error(`Unsupported shebang interpreter: ${shebangInterpreter}. Supported: sh, bash, wsh, python, python3, micropython`);
+      }
+    }
+
+    // Fall back to file extension
+    const ext = scriptPath.split('.').pop()!;
+
+    switch (ext) {
+      case 'sh':
+        return this._executeShellScript(scriptPath, scriptArgs);
+      case 'py':
+        return this._execWasm(this.wasmPaths.micropython, [scriptPath, ...scriptArgs]);
+      default:
+        throw new Error(`Unsupported script type: .${ext}. Supported: .sh, .py`);
+    }
+  }
+
+  /**
+   * Detect interpreter from script shebang
+   * Returns interpreter name or null if no shebang found
+   *
+   * Handles:
+   * - #!/bin/sh -> sh
+   * - #!/usr/bin/env python3 -> python3 (unwraps env)
+   * - #!/usr/bin/bash -> bash
+   * - #!/usr/bin/perl -> perl
+   */
+  private _detectShebangInterpreter(scriptPath: string): string | null {
+    try {
+      const scriptContent = readFileSync(scriptPath, 'utf-8');
+      const firstLine = scriptContent.split('\n')[0].trim();
+
+      if (firstLine.startsWith('#!')) {
+        const shebang = firstLine.slice(2).trim();
+        const parts = shebang.split(/\s+/);
+        const executable = parts[0];
+
+        // Extract interpreter name from executable path
+        const interpreter = executable.split('/').pop()!;
+
+        // Handle 'env' wrapper: #!/usr/bin/env python3 -> python3
+        if (interpreter === 'env' && parts.length > 1) {
+          return parts[1];
+        }
+
+        return interpreter;
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Execute a shell script via busybox wsh
+   * Reads the script content, checks for shebang, and passes it to wsh -c
+   * Note: Script arguments are not supported due to wsh limitations
+   */
+  private async _executeShellScript(scriptPath: string, scriptArgs: string[]): Promise<ExecResult> {
+    const scriptContent = readFileSync(scriptPath, 'utf-8');
+
+    // Warn if script arguments are provided (not supported by wsh)
+    if (scriptArgs.length > 0) {
+      console.warn(`Warning: Script arguments are not supported for .sh files in WASM sandbox`);
+    }
+
+    // Check for shebang and remove it
+    const lines = scriptContent.split('\n');
+    const firstLine = lines[0].trim();
+
+    if (firstLine.startsWith('#!')) {
+      // Shebang found - validate and warn if unsupported
+      const shebang = firstLine.slice(2).trim();
+
+      // Check if shebang references a supported interpreter
+      if (shebang.includes('sh') || shebang.includes('bash') || shebang.includes('wsh')) {
+        // Supported - remove shebang and execute
+        const contentWithoutShebang = lines.slice(1).join('\n');
+        return this._execWasm(this.wasmPaths.busybox, ['wsh', '-c', contentWithoutShebang]);
+      } else {
+        throw new Error(`Unsupported shebang: ${firstLine}. Only sh/bash/wsh are supported.`);
+      }
+    }
+
+    // No shebang - execute as is
+    return this._execWasm(this.wasmPaths.busybox, ['wsh', '-c', scriptContent]);
   }
 
   /**
