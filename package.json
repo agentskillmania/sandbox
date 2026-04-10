@@ -10,7 +10,7 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "exec-in-sandbox": "./bin/exec-in-sandbox.js"
+    "exec-in-sandbox": "bin/exec-in-sandbox"
   },
   "exports": {
     ".": {
