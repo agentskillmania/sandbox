@@ -1,73 +1,85 @@
 # @agentskillmania/sandbox
 
-统一的 WASM 沙箱工具，支持 busybox 和 micropython。
+WASM sandbox tool supporting busybox and micropython.
 
-## 特性
+## Features
 
-- 🚀 **轻量级**：单个 wasmtime 进程 ~10MB，vs Docker 的 ~1GB
-- ⚡ **冷启动快**：< 200ms 启动时间，vs Docker 的 >1s
-- 🔒 **安全隔离**：WASM 沙箱，文件系统访问受控
-- 🛠️ **简单易用**：CLI 工具和 Node.js SDK
+- 🚀 **Lightweight**: Single wasmtime process ~10MB vs Docker's ~1GB
+- ⚡ **Fast Cold Start**: <200ms startup time vs Docker's >1s
+- 🔒 **Secure Isolation**: WASM sandbox with controlled filesystem access
+- 🛠️ **Easy to Use**: CLI tool and Node.js SDK
 
-## 安装
+## Installation
 
 ```bash
 npm install -g @agentskillmania/sandbox
 ```
 
-### 运行时自动安装
+### Automatic Runtime Installation
 
-安装 npm 包时，脚本会自动安装专用版本的 wasmtime：
+When installing the npm package, the script automatically installs a dedicated version of wasmtime:
 
-- 📦 自动下载 wasmtime 43.0.0（固定版本，确保兼容性）
-- 🔒 安装到 `~/.agentskillmania/sandbox/bin/`（专用版本，不影响系统）
-- ✅ 不复用系统 wasmtime，避免版本冲突
+- 📦 Automatically downloads wasmtime 43.0.0 (fixed version for compatibility)
+- 🔒 Installs to `~/.agentskillmania/sandbox/wasmtime/` (dedicated version, doesn't affect system)
+- ✅ Doesn't reuse system wasmtime, avoiding version conflicts
 
-**支持的平台**：
-- macOS (x64, arm64)
-- Linux (x64, arm64)
-- Windows (x64) *(计划中)*
+**Supported Platforms**:
 
-**手动安装**（如果自动安装失败）：
+- macOS (x64, arm64) ✅
+- Linux (x64, arm64) ✅
+- Windows (x64, arm64) ⚠️ Planned
+
+**Windows Support**:
+The installation script requires cross-platform extraction libraries (like adm-zip). Current version supports macOS/Linux only.
+
+**Manual Installation** (if automatic installation fails):
 
 ```bash
-# 如果需要代理，设置环境变量
+# If you need a proxy, set environment variables
 export HTTP_PROXY=http://proxy.example.com:7890
 export HTTPS_PROXY=http://proxy.example.com:7890
 
-# 然后重新安装
+# Then reinstall
 npm install @agentskillmania/sandbox
 
-# 或手动下载 wasmtime 43.0.0
-# 访问: https://github.com/bytecodealliance/wasmtime/releases/tag/v43.0.0
-# 解压后复制到 ~/.agentskillmania/sandbox/bin/
+# Or manually download wasmtime 43.0.0
+# Visit: https://github.com/bytecodealliance/wasmtime/releases/tag/v43.0.0
+# Extract and copy to ~/.agentskillmania/sandbox/wasmtime/
 ```
 
-**代理支持**：
+**Proxy Support**:
 
-安装脚本会自动使用 `curl` 下载（如果可用），它会自动读取以下环境变量：
+The installation script automatically uses `curl` for downloads (if available), which reads these environment variables:
+
 - `HTTP_PROXY` / `http_proxy`
 - `HTTPS_PROXY` / `https_proxy`
 - `NO_PROXY` / `no_proxy`
 
-## 使用
+## Usage
 
-### CLI 工具
+### CLI Tool
 
 ```bash
-# 执行 Shell 命令（通过 busybox.wasm）
+# Execute Shell commands (via busybox.wasm)
 exec-in-sandbox busybox ls -la
 exec-in-sandbox busybox -c "echo hello | grep h"
 
-# 执行 Python 代码（通过 micropython.wasm）
+# List all available busybox commands (built-in)
+exec-in-sandbox busybox --list
+exec-in-sandbox busybox --list-full
+
+# Show busybox help (built-in)
+exec-in-sandbox busybox
+
+# Execute Python code (via micropython.wasm)
 exec-in-sandbox python -c "print('hello from python')"
 exec-in-sandbox python -c "import os; print(os.listdir('.'))"
 
-# 执行脚本文件
+# Execute script files
 exec-in-sandbox busybox script.sh
 exec-in-sandbox python script.py
 
-# 使用共享文件系统
+# Use shared filesystem
 exec-in-sandbox busybox -c "echo 'print(42)' > .sandbox/script.py"
 exec-in-sandbox python .sandbox/script.py
 ```
@@ -77,21 +89,21 @@ exec-in-sandbox python .sandbox/script.py
 ```javascript
 import { Sandbox } from '@agentskillmania/sandbox';
 
-// 创建沙箱实例
+// Create sandbox instance
 const sandbox = new Sandbox({
-  sandboxDir: '.sandbox', // 共享文件系统目录
-  timeout: 5000,          // 超时时间（毫秒）
+  sandboxDir: '.sandbox', // Shared filesystem directory
+  timeout: 5000, // Timeout (milliseconds)
 });
 
-// 执行 Shell 命令
+// Execute Shell commands
 const result1 = await sandbox.runShell('ls', ['-la']);
 console.log(result1.stdout);
 
-// 执行 Python 代码
+// Execute Python code
 const result2 = await sandbox.runPython("print('hello')");
 console.log(result2.stdout);
 
-// 通过文件系统传递数据
+// Pass data via filesystem
 await sandbox.runShell('sh', ['-c', 'echo "data" > .sandbox/input.txt']);
 const result3 = await sandbox.runPython(`
   with open('.sandbox/input.txt') as f:
@@ -101,7 +113,7 @@ const result3 = await sandbox.runPython(`
 console.log(result3.stdout);
 ```
 
-## 架构
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -109,60 +121,60 @@ console.log(result3.stdout);
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │              Command Router                          │  │
-│  │  - 识别命令类型（Shell vs Python）                  │  │
-│  │  - 路由到对应的 WASM 模块                           │  │
+│  │  - Identify command type (Shell vs Python)          │  │
+│  │  - Route to corresponding WASM module              │  │
 │  └─────────────────────────────────────────────────────┘  │
 │                          ↓                                │
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │            Shared Sandbox Directory                 │  │
 │  │  .sandbox/                                          │  │
-│  │    ├── tmp/          (临时文件)                     │  │
-│  │    ├── data/         (数据文件)                     │  │
-│  │    └── scripts/      (脚本文件)                     │  │
+│  │    ├── tmp/          (temporary files)              │  │
+│  │    ├── data/         (data files)                   │  │
+│  │    └── scripts/      (script files)                 │  │
 │  └─────────────────────────────────────────────────────┘  │
 │         ↓                           ↓                    │
 │  ┌──────────────┐          ┌─────────────┐             │
 │  │ busybox.wasm │          │ micropython │             │
 │  │              │          │   .wasm     │             │
-│  │ Shell 命令   │          │ Python 代码 │             │
+│  │ Shell cmd    │          │ Python code │             │
 │  └──────────────┘          └─────────────┘             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 工作原理
+## How It Works
 
-1. **命令路由**：根据命令类型自动选择 WASM 模块
-   - Shell 命令 → `busybox.wasm`
-   - Python 代码/脚本 → `micropython.wasm`
+1. **Command Routing**: Automatically selects WASM module based on command type
+   - Shell commands → `busybox.wasm`
+   - Python code/scripts → `micropython.wasm`
 
-2. **共享文件系统**：
-   - 创建 `.sandbox/` 目录
-   - 通过 `--dir=.sandbox` 参数映射到 WASM 沙箱
-   - 两个模块都可以读写这个目录
+2. **Shared Filesystem**:
+   - Creates `.sandbox/` directory
+   - Maps to WASM sandbox via `--dir=.sandbox` parameter
+   - Both modules can read/write this directory
 
-3. **进程隔离**：
-   - 每次执行都是独立的 wasmtime 进程
-   - 执行完成后进程退出，资源自动释放
+3. **Process Isolation**:
+   - Each execution is a separate wasmtime process
+   - Process exits after execution, resources automatically released
 
-## 性能
+## Performance
 
-| 指标 | @agentskillmania/sandbox | Docker |
-|------|--------------|--------|
-| 冷启动 | ~200ms | >1s |
-| 内存占用 | ~50MB | >1GB |
-| 磁盘占用 | ~10MB | >100MB |
+| Metric       | @agentskillmania/sandbox | Docker |
+| ------------ | ------------------------ | ------ |
+| Cold Start   | ~200ms                   | >1s    |
+| Memory Usage | ~50MB                    | >1GB   |
+| Disk Usage   | ~10MB                    | >100MB |
 
-## 开发
+## Development
 
 ```bash
-# 克隆仓库
-git clone https://github.com/agentskillmania/flyweight.git
+# Clone repository
+git clone https://github.com/agentskillmania/sandbox.git
 cd sandbox
 
-# 安装依赖
+# Install dependencies
 npm install
 
-# 运行测试
+# Run tests
 npm test
 
 # Lint
@@ -172,10 +184,10 @@ npm run lint
 npm run format
 ```
 
-## 贡献
+## Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Issues and Pull Requests are welcome!
 
-## 许可证
+## License
 
 MIT
