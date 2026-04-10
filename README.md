@@ -32,6 +32,10 @@ When installing the npm package, the script automatically installs a dedicated v
 **Manual Installation** (if automatic installation fails):
 
 ```bash
+# If you need a proxy, set environment variables
+export HTTP_PROXY=http://proxy.example.com:7890
+export HTTPS_PROXY=http://proxy.example.com:7890
+
 # Reinstall wasmtime runtime using CLI
 exec-in-sandbox install-runtime
 

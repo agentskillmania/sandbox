@@ -32,6 +32,10 @@ npm install -g @agentskillmania/sandbox
 **手动安装**（如果自动安装失败）：
 
 ```bash
+# 如果需要代理，设置环境变量
+export HTTP_PROXY=http://proxy.example.com:7890
+export HTTPS_PROXY=http://proxy.example.com:7890
+
 # 使用 CLI 命令重新安装 wasmtime 运行时
 exec-in-sandbox install-runtime
 
