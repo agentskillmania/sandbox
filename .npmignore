@@ -1,0 +1,56 @@
+# 源代码（已构建到 dist/）
+src/
+*.ts
+!dist/**/*.d.ts
+
+# 测试文件
+test/
+*.test.ts
+*.spec.ts
+coverage/
+.nyc_output/
+
+# 开发配置
+.vite/
+.vscode/
+.idea/
+*.log
+*.tgz
+.eslintrc*
+.prettierrc*
+
+# 构建配置
+tsconfig.json
+vite.config.ts
+vitest.config.ts
+
+# 临时文件
+.sandbox*
+.sandbox-*
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Husky
+.husky/
+
+# 文档（内部使用）
+.vibe/
+*.md
+!README.md
+!README.zh_CN.md
+!LICENSE
+
+# Node modules（虽然 npm 会自动排除，但显式声明更安全）
+node_modules/
