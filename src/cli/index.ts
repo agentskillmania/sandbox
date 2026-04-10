@@ -45,7 +45,8 @@ program
       const sandboxConfig = buildSandboxConfig(program.opts(), {
         commandMode: commandSecurity.mode,
         commandList: commandSecurity.list,
-        networkDefaultEnabled: networkSecurity.defaultEnabled,
+        networkMode: networkSecurity.mode,
+        networkList: networkSecurity.list,
       });
 
       const sandbox = new Sandbox(sandboxConfig);
@@ -96,7 +97,8 @@ program
       const sandboxConfig = buildSandboxConfig(program.opts(), {
         commandMode: commandSecurity.mode,
         commandList: commandSecurity.list,
-        networkDefaultEnabled: networkSecurity.defaultEnabled,
+        networkMode: networkSecurity.mode,
+        networkList: networkSecurity.list,
       });
 
       const sandbox = new Sandbox(sandboxConfig);
@@ -161,7 +163,8 @@ program
 function buildSandboxConfig(opts: any, securityDefaults?: {
   commandMode?: 'whitelist' | 'blacklist';
   commandList?: string[];
-  networkDefaultEnabled?: boolean;
+  networkMode?: 'whitelist' | 'blacklist';
+  networkList?: string[];
 }): SandboxConfig {
   const config: SandboxConfig = {};
 
@@ -175,11 +178,14 @@ function buildSandboxConfig(opts: any, securityDefaults?: {
     config.timeout = parseInt(opts.timeout);
   }
 
-  // Apply network setting: CLI > security default
+  // Apply network setting
+  // CLI --allow-network overrides security defaults
+  // If not specified, use security defaults (whitelist mode enables network, blacklist disables it)
   if (opts.allowNetwork !== undefined) {
     config.allowNetwork = opts.allowNetwork;
-  } else if (securityDefaults?.networkDefaultEnabled !== undefined) {
-    config.allowNetwork = securityDefaults.networkDefaultEnabled;
+  } else if (securityDefaults?.networkMode) {
+    // whitelist mode = enable network + allowlist, blacklist mode = disable network
+    config.allowNetwork = securityDefaults.networkMode === 'whitelist';
   }
 
   // Apply command allowlist/blocklist
@@ -197,11 +203,18 @@ function buildSandboxConfig(opts: any, securityDefaults?: {
   }
 
   // Apply network allowlist/blocklist
+  // CLI parameters override security defaults
   if (opts.networkAllowlist) {
     config.networkAllowlist = opts.networkAllowlist.split(',');
-  }
-  if (opts.networkBlocklist) {
+  } else if (opts.networkBlocklist) {
     config.networkBlocklist = opts.networkBlocklist.split(',');
+  } else if (securityDefaults?.networkMode && securityDefaults.networkList) {
+    // Apply security defaults
+    if (securityDefaults.networkMode === 'whitelist') {
+      config.networkAllowlist = securityDefaults.networkList;
+    } else {
+      config.networkBlocklist = securityDefaults.networkList;
+    }
   }
 
   return config;

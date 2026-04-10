@@ -10,8 +10,8 @@ import type { GlobalSecurityConfig } from './types.js';
 const DEFAULT_SECURITY_YAML = `
 # Command security policy
 commands:
-  mode: blacklist        # Default: blacklist dangerous commands
-  list:                  # Commands to block by default
+  mode: blacklist        # blacklist = block these, whitelist = only allow these
+  list:                  # Commands to apply the mode
     - rm
     - format
     - fdisk
@@ -19,12 +19,8 @@ commands:
 
 # Network security policy
 network:
-  defaultEnabled: false  # Default: disable network access
-  allowlist:             # Allowed domains (when network is enabled)
-    - '*.github.com'
-    - registry.npmjs.org
-    - '*.npmjs.org'
-  blocklist:             # Blocked domains
+  mode: blacklist        # blacklist = block these domains, whitelist = only allow these
+  list:                  # Domains to apply the mode
     - '*.malicious.com'
     - '*.ads.com'
 `;
@@ -74,7 +70,7 @@ export class SecurityConfigManager {
   /**
    * Get default network security settings
    */
-  getNetworkSecurity(): { defaultEnabled?: boolean; allowlist?: string[]; blocklist?: string[] } {
+  getNetworkSecurity(): { mode?: 'whitelist' | 'blacklist'; list?: string[] } {
     return this.securityConfig.network || {};
   }
 }

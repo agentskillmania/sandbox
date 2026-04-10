@@ -11,9 +11,8 @@ vi.mock('@agentskillmania/settings-yaml', () => ({
         list: ['rm', 'format', 'fdisk'],
       },
       network: {
-        defaultEnabled: false,
-        allowlist: ['*.github.com', 'registry.npmjs.org'],
-        blocklist: ['*.malicious.com', '*.ads.com'],
+        mode: 'blacklist',
+        list: ['*.malicious.com', '*.ads.com'],
       },
     })),
   })),
@@ -62,9 +61,8 @@ describe('SecurityConfigManager', () => {
       const networkSecurity = securityConfig.getNetworkSecurity();
 
       expect(networkSecurity).toEqual({
-        defaultEnabled: false,
-        allowlist: ['*.github.com', 'registry.npmjs.org'],
-        blocklist: ['*.malicious.com', '*.ads.com'],
+        mode: 'blacklist',
+        list: ['*.malicious.com', '*.ads.com'],
       });
     });
   });

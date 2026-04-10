@@ -65,19 +65,17 @@ export interface PythonConfig extends ModuleConfig {}
 export interface GlobalSecurityConfig {
   /** Command security policy */
   commands?: {
-    /** Default mode: whitelist or blacklist */
+    /** Mode: whitelist (only allow) or blacklist (only block) */
     mode?: 'whitelist' | 'blacklist';
-    /** Default command list */
+    /** Command list */
     list?: string[];
   };
   /** Network security policy */
   network?: {
-    /** Default: allow network access */
-    defaultEnabled?: boolean;
-    /** Domain allowlist */
-    allowlist?: string[];
-    /** Domain blocklist */
-    blocklist?: string[];
+    /** Mode: whitelist (only allow) or blacklist (only block) */
+    mode?: 'whitelist' | 'blacklist';
+    /** Domain list */
+    list?: string[];
   };
 }
 

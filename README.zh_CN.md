@@ -133,37 +133,6 @@ console.log(result3.stdout);
 
 ### 配置
 
-你可以通过 YAML 配置文件 `~/.agentskillmania/sandbox/config.yaml` 配置沙箱：
-
-```yaml
-# 沙箱目录（auto = 创建临时目录）
-sandboxDir: auto
-
-# 模块配置
-modules:
-  busybox:
-    enabled: true
-    wasmPath: ./wasm/busybox.wasm
-    commands:
-      mode: blacklist  # 或 'whitelist'
-      list: ['rm', 'format']  # 可选的命令列表
-  python:
-    enabled: true
-    wasmPath: ./wasm/micropython.wasm
-
-# 网络配置
-network:
-  enabled: false  # 允许网络访问
-  allowlist:
-    - '*.github.com'
-    - registry.npmjs.org
-  blocklist:
-    - '*.malicious.com'
-
-# 安全配置
-security:
-### 配置
-
 全局配置文件位于 `~/.agentskillmania/sandbox/config.yaml`，**仅包含安全策略**。它为命令和网络安全提供默认值：
 
 ```yaml
@@ -193,16 +162,57 @@ network:
 **配置优先级：**
 
 1. 命令行参数（最高优先级）
+### 配置
+
+全局配置文件位于 `~/.agentskillmania/sandbox/config.yaml`，**仅包含安全策略**。它为命令和网络安全提供默认值：
+
+```yaml
+# 命令安全策略
+commands:
+  mode: blacklist        # blacklist = 禁止列表中的命令，whitelist = 只允许列表中的命令
+  list:                  # 应用该模式的命令列表
+    - rm
+    - format
+    - fdisk
+
+# 网络安全策略
+network:
+  mode: blacklist        # blacklist = 禁止列表中的域名，whitelist = 只允许列表中的域名
+  list:                  # 应用该模式的域名列表
+    - '*.malicious.com'
+    - '*.ads.com'
+```
+
+**模式语义：**
+- **黑名单模式**：禁止列表中的项目，允许其他所有项目
+  - 命令：禁止危险命令如 `rm`、`format`
+  - 网络：禁止恶意域名，允许其他所有域名
+- **白名单模式**：只允许列表中的项目，禁止其他所有项目
+  - 命令：只允许特定命令如 `ls`、`cat`
+  - 网络：只允许特定域名如 `*.github.com`
+
+**网络行为：**
+- 无配置或 `mode: blacklist` 且列表为空 → 禁用网络
+- `mode: whitelist` → 启用网络 + 只允许列表中的域名
+- `mode: blacklist` 且有列表 → 启用网络 + 禁止列表中的域名
+
+**执行参数**（timeout、sandboxDir 等）**不在**配置文件中。必须通过以下方式指定：
+- 命令行参数：`--timeout 10000`
+- SDK 构造函数：`new Sandbox({ timeout: 10000 })`
+
+**配置优先级：**
+
+1. 命令行参数（最高优先级）
 2. SDK 构造函数参数
 3. 全局安全策略（默认值）
 
 **安全策略映射：**
 
-| 安全功能 | 全局配置 | CLI 覆盖 | SDK 覆盖 |
-|---------|----------|----------|----------|
+| 安全功能 | 全局配置 | CLI 覆盖 | SDK 构造函数 |
+|---------|----------|----------|-------------|
 | 命令过滤 | `commands.mode` + `list` | `--command-allowlist/blocklist` | `commandAllowlist/blocklist` |
-| 网络默认值 | `network.defaultEnabled` | `--allow-network` | `allowNetwork` |
-| 域名过滤 | `network.allowlist/blocklist` | `--network-allowlist/blocklist` | `networkAllowlist/blocklist` |
+| 网络模式 | `network.mode` | `--allow-network` | `allowNetwork` |
+| 域名过滤 | `network.mode` + `list` | `--network-allowlist/blocklist` | `networkAllowlist/blocklist` |
 
 ## 工作原理
 ## 工作原理

@@ -130,6 +130,8 @@ const result3 = await sandbox.runPython(`
 console.log(result3.stdout);
 ```
 
+```
+
 ### Configuration
 
 The global configuration file at `~/.agentskillmania/sandbox/config.yaml` contains **security policies only**. It provides default values for command and network security:
@@ -137,8 +139,8 @@ The global configuration file at `~/.agentskillmania/sandbox/config.yaml` contai
 ```yaml
 # Command security policy
 commands:
-  mode: blacklist        # Default mode: whitelist or blacklist
-  list:                  # Commands to block by default
+  mode: blacklist        # blacklist = block these, whitelist = only allow these
+  list:                  # Commands to apply the mode
     - rm
     - format
     - fdisk
@@ -146,18 +148,30 @@ commands:
 
 # Network security policy
 network:
-  defaultEnabled: false  # Default: disable network access
-  allowlist:             # Allowed domains (when network is enabled)
-    - '*.github.com'
-    - registry.npmjs.org
-  blocklist:             # Blocked domains
+  mode: blacklist        # blacklist = block these domains, whitelist = only allow these
+  list:                  # Domains to apply the mode
     - '*.malicious.com'
+    - '*.ads.com'
 ```
+
+**Mode semantics:**
+- **Blacklist mode**: Block items in the list, allow everything else
+  - Commands: Block dangerous commands like `rm`, `format`
+  - Network: Block malicious domains, allow all other domains
+- **Whitelist mode**: Only allow items in the list, block everything else
+  - Commands: Only allow specific commands like `ls`, `cat`
+  - Network: Only allow specific domains like `*.github.com`
+
+**Network behavior:**
+- No config or `mode: blacklist` with empty list → Network disabled
+- `mode: whitelist` → Network enabled + only allow listed domains
+- `mode: blacklist` with list → Network enabled + block listed domains
 
 **Execution parameters** (timeout, sandboxDir, etc.) are **not** in the config file. They must be specified via:
 - Command-line arguments: `--timeout 10000`
 - SDK constructor: `new Sandbox({ timeout: 10000 })`
 
+**Configuration Priority:**
 **Configuration Priority:**
 
 1. Command-line arguments (highest priority)
@@ -166,11 +180,11 @@ network:
 
 **Security Policy Mapping:**
 
-| Security Feature | Global Config | CLI Override | SDK Override |
-|-----------------|--------------|--------------|--------------|
+| Security Feature | Global Config | CLI Override | SDK Constructor |
+|-----------------|--------------|--------------|-----------------|
 | Command filtering | `commands.mode` + `list` | `--command-allowlist/blocklist` | `commandAllowlist/blocklist` |
-| Network default | `network.defaultEnabled` | `--allow-network` | `allowNetwork` |
-| Domain filtering | `network.allowlist/blocklist` | `--network-allowlist/blocklist` | `networkAllowlist/blocklist` |
+| Network mode | `network.mode` | `--allow-network` | `allowNetwork` |
+| Domain filtering | `network.mode` + `list` | `--network-allowlist/blocklist` | `networkAllowlist/blocklist` |
 
 ## Architecture
 
