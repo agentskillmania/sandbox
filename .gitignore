@@ -5,6 +5,8 @@ yarn.lock
 
 # Sandbox directory
 .sandbox/
+.sandbox-test/
+.test-sandbox/
 
 # Runtime downloads
 *.tar.xz
