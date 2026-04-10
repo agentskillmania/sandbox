@@ -61,12 +61,31 @@ export SANDBOX_NETWORK_LIST=example.com,dangerous.site
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
+### 推荐：npx 方式（自动安装）
+
+```json
+{
+  "mcpServers": {
+    "sandbox": {
+      "command": "npx",
+      "args": ["-y", "@agentskillmania/sandbox-mcp"],
+      "env": {
+        "SANDBOX_ALLOW_NETWORK": "true",
+        "SANDBOX_TIMEOUT": "10000"
+      }
+    }
+  }
+}
+```
+
+### 备选：直接 node 方式（本地开发）
+
 ```json
 {
   "mcpServers": {
     "sandbox": {
       "command": "node",
-      "args": ["/path/to/node_modules/@agentskillmania/sandbox-mcp/dist/index.js"],
+      "args": ["./node_modules/@agentskillmania/sandbox-mcp/dist/index.js"],
       "env": {
         "SANDBOX_ALLOW_NETWORK": "true",
         "SANDBOX_TIMEOUT": "10000"
