@@ -224,6 +224,50 @@ network:
    - 每次执行都是独立的 wasmtime 进程
    - 执行完成后进程退出，资源自动释放
 
+## Shell 脚本支持 (wsh)
+
+Shell 脚本（`.sh` 文件）通过 **wsh** 执行，这是来自 busybox-wasi 的自定义 WASM shell 实现。
+
+### 支持的功能
+
+✅ **变量和展开**：`X=hello; echo $X`
+✅ **命令替换**：`echo $(echo inner)`
+✅ **管道**：`echo hello | tr a-z A-Z`
+✅ **控制流**：`if/else`、`for` 循环、`case` 语句
+✅ **逻辑运算符**：`&&`、`||`
+✅ **算术运算**：`expr 10 + 20`（使用 `expr`，不是 `$((...))`）
+
+### 已知限制
+
+这些是 **wsh 实现限制**，不是 sandbox 的 bug：
+
+❌ **不支持 `#` 注释** — wsh 不支持 shell 风格的注释
+❌ **不支持函数定义** — `()` 语法不支持
+❌ **不支持 `$((...))` 算术** — 请使用 `expr $X + $Y` 替代
+❌ **多行脚本** — 命令必须用 `;` 分隔，不能用换行符
+
+### 脚本格式
+
+由于 wsh 的限制，Shell 脚本应该：
+
+```bash
+# ✅ 正确：无 shebang，使用分号，无注释
+echo "Hello"; echo "World"
+X=10; Y=20; result=$(expr $X + $Y); echo $result
+if [ "$X" -gt 5 ]; then echo "X is large"; fi
+
+# ❌ 错误：使用了不支持的功能
+#!/bin/sh
+# 这是注释 - 会失败！
+X=$((10 + 20))  # 算术展开 - 会失败！
+```
+
+**提示：**
+- 保持脚本单行或用分号分隔
+- 使用 `expr` 进行算术运算：`result=$(expr 10 + 20)`
+- 避免函数定义 — 使用内联命令
+- 不需要 `#` 注释
+
 ## 性能
 
 | 指标     | @agentskillmania/sandbox | Docker |
