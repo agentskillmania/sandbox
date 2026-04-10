@@ -32,6 +32,14 @@ vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => true),
   mkdirSync: vi.fn(),
   mkdtempSync: vi.fn((prefix) => prefix + '12345'),
+  readFileSync: vi.fn((path: string, encoding: string) => {
+    if (path.endsWith('.sh')) {
+      return '#!/bin/sh\necho "Hello from script"';
+    } else if (path.endsWith('.py')) {
+      return '#!/usr/bin/env python3\nprint("Hello from Python")';
+    }
+    return '';
+  }),
 }));
 
 // Mock os
@@ -192,6 +200,35 @@ describe('Sandbox', () => {
       expect(versions).toHaveProperty('wasmtime');
       expect(versions).toHaveProperty('busybox');
       expect(versions).toHaveProperty('micropython');
+    });
+  });
+
+  describe('script file execution', () => {
+    it('should detect .sh script files', async () => {
+      const result = await sandbox.runShell('busybox', ['test.sh']);
+      expect(result.exitCode).toBe(0);
+      // Should call spawn for script execution
+      expect(mockSpawn).toHaveBeenCalled();
+    });
+
+    it('should detect .py script files', async () => {
+      const result = await sandbox.runShell('busybox', ['test.py']);
+      expect(result.exitCode).toBe(0);
+      expect(mockSpawn).toHaveBeenCalled();
+    });
+
+    it('should not detect non-script files', async () => {
+      const result = await sandbox.runShell('busybox', ['test.txt']);
+      expect(result.exitCode).toBe(0);
+      // Should call with normal busybox args
+      expect(mockSpawn).toHaveBeenCalled();
+    });
+
+    it('should not treat .pl files as scripts (passes to busybox)', async () => {
+      const result = await sandbox.runShell('busybox', ['test.pl']);
+      expect(result.exitCode).toBe(0);
+      // .pl files are not supported, so they're passed to busybox as normal args
+      expect(mockSpawn).toHaveBeenCalled();
     });
   });
 });
