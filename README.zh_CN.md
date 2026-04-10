@@ -130,41 +130,6 @@ const result3 = await sandbox.runPython(`
 console.log(result3.stdout);
 ```
 
-### 配置
-
-配置通过 `~/.agentskillmania/sandbox/config.yaml` 管理：
-
-```yaml
-# 沙箱目录（auto = 创建临时目录）
-sandboxDir: auto
-
-# 模块配置
-modules:
-  busybox:
-    enabled: true
-    wasmPath: ./wasm/busybox.wasm
-    commands:
-      mode: blacklist
-      list: ['rm', 'format']
-  python:
-    enabled: true
-    wasmPath: ./wasm/micropython.wasm
-
-# 网络配置
-network:
-  enabled: false
-  allowlist:
-    - '*.github.com'
-    - registry.npmjs.org
-  blocklist:
-    - '*.malicious.com'
-
-# 安全配置
-security:
-  timeout: 5000
-```
-	console.log(result3.stdout);
-```
 
 ### 配置
 
@@ -201,42 +166,49 @@ security:
 ```
 
 **配置映射关系：**
+### 配置
 
-| 功能 | 命令行参数 | 配置文件 | SDK 构造函数 |
-|------|-----------|----------|-------------|
-| 沙箱目录 | `--sandbox-dir` | `sandboxDir` | `sandboxDir` |
-| 超时时间 | `--timeout` | `security.timeout` | `timeout` |
-| 网络访问 | `--allow-network` | `network.enabled` | `allowNetwork` |
-| 命令过滤 | `--command-allowlist/blocklist` | `modules.busybox.commands` | `commandAllowlist/blocklist` |
-| 网络过滤 | `--network-allowlist/blocklist` | `network.allowlist/blocklist` | `networkAllowlist/blocklist` |
+全局配置文件位于 `~/.agentskillmania/sandbox/config.yaml`，**仅包含安全策略**。它为命令和网络安全提供默认值：
 
+```yaml
+# 命令安全策略
+commands:
+  mode: blacklist        # 默认模式：whitelist 或 blacklist
+  list:                  # 默认黑名单
+    - rm
+    - format
+    - fdisk
+    - mkfs
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     @agentskillmania/sandbox (Node.js)       │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │              命令路由器                             │  │
-│  │  - 识别命令类型（Shell vs Python）                  │  │
-│  │  - 路由到对应的 WASM 模块                           │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                          ↓                                │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │            共享沙箱目录                             │  │
-│  │  .sandbox/                                          │  │
-│  │    ├── tmp/          (临时文件)                     │  │
-│  │    ├── data/         (数据文件)                     │  │
-│  │    └── scripts/      (脚本文件)                     │  │
-│  └─────────────────────────────────────────────────────┘  │
-│         ↓                           ↓                    │
-│  ┌──────────────┐          ┌─────────────┐             │
-│  │ busybox.wasm │          │ micropython │             │
-│  │              │          │   .wasm     │             │
-│  │ Shell 命令   │          │ Python 代码 │             │
-│  └──────────────┘          └─────────────┘             │
-└─────────────────────────────────────────────────────────────┘
+# 网络安全策略
+network:
+  defaultEnabled: false  # 默认：禁用网络访问
+  allowlist:             # 允许的域名（启用网络时）
+    - '*.github.com'
+    - registry.npmjs.org
+  blocklist:             # 禁止的域名
+    - '*.malicious.com'
 ```
 
+**执行参数**（timeout、sandboxDir 等）**不在**配置文件中。必须通过以下方式指定：
+- 命令行参数：`--timeout 10000`
+- SDK 构造函数：`new Sandbox({ timeout: 10000 })`
+
+**配置优先级：**
+
+1. 命令行参数（最高优先级）
+2. SDK 构造函数参数
+3. 全局安全策略（默认值）
+
+**安全策略映射：**
+
+| 安全功能 | 全局配置 | CLI 覆盖 | SDK 覆盖 |
+|---------|----------|----------|----------|
+| 命令过滤 | `commands.mode` + `list` | `--command-allowlist/blocklist` | `commandAllowlist/blocklist` |
+| 网络默认值 | `network.defaultEnabled` | `--allow-network` | `allowNetwork` |
+| 域名过滤 | `network.allowlist/blocklist` | `--network-allowlist/blocklist` | `networkAllowlist/blocklist` |
+
+## 工作原理
 ## 工作原理
 
 1. **命令路由**：根据命令类型自动选择 WASM 模块

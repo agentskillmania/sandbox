@@ -6,7 +6,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { Sandbox } from '../lib/Sandbox.js';
-import { initializeGlobalConfig } from '../lib/config.js';
+import { initializeSecurityConfig } from '../lib/config.js';
 import { getRuntimeVersions } from '../lib/runtime.js';
 import type { SandboxConfig } from '../lib/types.js';
 
@@ -36,12 +36,19 @@ program
   .option('-c, --code <command>', 'Execute command string')
   .action(async (command, options) => {
     try {
-      // Initialize configuration
-      const config = await initializeGlobalConfig({
-        override: buildSandboxConfig(program.opts()),
+      // Initialize security configuration
+      const securityConfig = await initializeSecurityConfig();
+      const commandSecurity = securityConfig.getCommandSecurity();
+      const networkSecurity = securityConfig.getNetworkSecurity();
+
+      // Build config with security defaults
+      const sandboxConfig = buildSandboxConfig(program.opts(), {
+        commandMode: commandSecurity.mode,
+        commandList: commandSecurity.list,
+        networkDefaultEnabled: networkSecurity.defaultEnabled,
       });
 
-      const sandbox = new Sandbox(config.getSandboxConfig());
+      const sandbox = new Sandbox(sandboxConfig);
 
       let result;
 
@@ -80,12 +87,19 @@ program
   .option('-c, --code <code>', 'Execute Python code')
   .action(async (script, options) => {
     try {
-      // Initialize configuration
-      const config = await initializeGlobalConfig({
-        override: buildSandboxConfig(program.opts()),
+      // Initialize security configuration
+      const securityConfig = await initializeSecurityConfig();
+      const commandSecurity = securityConfig.getCommandSecurity();
+      const networkSecurity = securityConfig.getNetworkSecurity();
+
+      // Build config with security defaults
+      const sandboxConfig = buildSandboxConfig(program.opts(), {
+        commandMode: commandSecurity.mode,
+        commandList: commandSecurity.list,
+        networkDefaultEnabled: networkSecurity.defaultEnabled,
       });
 
-      const sandbox = new Sandbox(config.getSandboxConfig());
+      const sandbox = new Sandbox(sandboxConfig);
 
       let result;
 
@@ -142,27 +156,50 @@ program
   });
 
 /**
- * Build SandboxConfig from CLI options
+ * Build SandboxConfig from CLI options and security defaults
  */
-function buildSandboxConfig(opts: any): SandboxConfig {
-  const config: SandboxConfig = {
-    sandboxDir: opts.sandboxDir,
-    timeout: parseInt(opts.timeout) || undefined,
-    allowNetwork: opts.allowNetwork,
-  };
+function buildSandboxConfig(opts: any, securityDefaults?: {
+  commandMode?: 'whitelist' | 'blacklist';
+  commandList?: string[];
+  networkDefaultEnabled?: boolean;
+}): SandboxConfig {
+  const config: SandboxConfig = {};
 
+  // Apply sandbox directory if specified
+  if (opts.sandboxDir) {
+    config.sandboxDir = opts.sandboxDir;
+  }
+
+  // Apply timeout if specified
+  if (opts.timeout) {
+    config.timeout = parseInt(opts.timeout);
+  }
+
+  // Apply network setting: CLI > security default
+  if (opts.allowNetwork !== undefined) {
+    config.allowNetwork = opts.allowNetwork;
+  } else if (securityDefaults?.networkDefaultEnabled !== undefined) {
+    config.allowNetwork = securityDefaults.networkDefaultEnabled;
+  }
+
+  // Apply command allowlist/blocklist
   if (opts.commandAllowlist) {
     config.commandAllowlist = opts.commandAllowlist.split(',');
-  }
-
-  if (opts.commandBlocklist) {
+  } else if (opts.commandBlocklist) {
     config.commandBlocklist = opts.commandBlocklist.split(',');
+  } else if (securityDefaults?.commandMode && securityDefaults.commandList) {
+    // Apply security defaults
+    if (securityDefaults.commandMode === 'whitelist') {
+      config.commandAllowlist = securityDefaults.commandList;
+    } else {
+      config.commandBlocklist = securityDefaults.commandList;
+    }
   }
 
+  // Apply network allowlist/blocklist
   if (opts.networkAllowlist) {
     config.networkAllowlist = opts.networkAllowlist.split(',');
   }
-
   if (opts.networkBlocklist) {
     config.networkBlocklist = opts.networkBlocklist.split(',');
   }

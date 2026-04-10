@@ -129,52 +129,48 @@ const result3 = await sandbox.runPython(`
 `);
 console.log(result3.stdout);
 ```
-	console.log(result3.stdout);
-```
 
 ### Configuration
 
-You can configure the sandbox via a YAML file at `~/.agentskillmania/sandbox/config.yaml`:
+The global configuration file at `~/.agentskillmania/sandbox/config.yaml` contains **security policies only**. It provides default values for command and network security:
 
 ```yaml
-# Sandbox directory (auto = create temp directory)
-sandboxDir: auto
+# Command security policy
+commands:
+  mode: blacklist        # Default mode: whitelist or blacklist
+  list:                  # Commands to block by default
+    - rm
+    - format
+    - fdisk
+    - mkfs
 
-# Module configuration
-modules:
-  busybox:
-    enabled: true
-    wasmPath: ./wasm/busybox.wasm
-    commands:
-      mode: blacklist  # or 'whitelist'
-      list: ['rm', 'format']  # optional command list
-  python:
-    enabled: true
-    wasmPath: ./wasm/micropython.wasm
-
-# Network configuration
+# Network security policy
 network:
-  enabled: false  # allow network access
-  allowlist:
+  defaultEnabled: false  # Default: disable network access
+  allowlist:             # Allowed domains (when network is enabled)
     - '*.github.com'
     - registry.npmjs.org
-  blocklist:
+  blocklist:             # Blocked domains
     - '*.malicious.com'
-
-# Security configuration
-security:
-  timeout: 5000  # execution timeout (milliseconds)
 ```
 
-**Configuration Mapping:**
+**Execution parameters** (timeout, sandboxDir, etc.) are **not** in the config file. They must be specified via:
+- Command-line arguments: `--timeout 10000`
+- SDK constructor: `new Sandbox({ timeout: 10000 })`
 
-| Feature | CLI Argument | Config YAML | SDK Constructor |
-|---------|--------------|-------------|-----------------|
-| Sandbox dir | `--sandbox-dir` | `sandboxDir` | `sandboxDir` |
-| Timeout | `--timeout` | `security.timeout` | `timeout` |
-| Network | `--allow-network` | `network.enabled` | `allowNetwork` |
-| Command filter | `--command-allowlist/blocklist` | `modules.busybox.commands` | `commandAllowlist/blocklist` |
-| Network filter | `--network-allowlist/blocklist` | `network.allowlist/blocklist` | `networkAllowlist/blocklist` |
+**Configuration Priority:**
+
+1. Command-line arguments (highest priority)
+2. SDK constructor parameters
+3. Global security policy (default values)
+
+**Security Policy Mapping:**
+
+| Security Feature | Global Config | CLI Override | SDK Override |
+|-----------------|--------------|--------------|--------------|
+| Command filtering | `commands.mode` + `list` | `--command-allowlist/blocklist` | `commandAllowlist/blocklist` |
+| Network default | `network.defaultEnabled` | `--allow-network` | `allowNetwork` |
+| Domain filtering | `network.allowlist/blocklist` | `--network-allowlist/blocklist` | `networkAllowlist/blocklist` |
 
 ## Architecture
 ## Architecture

@@ -59,25 +59,25 @@ export interface BusyboxConfig extends ModuleConfig {
 export interface PythonConfig extends ModuleConfig {}
 
 /**
- * Complete configuration interface
+ * Global security configuration (from ~/.agentskillmania/sandbox/config.yaml)
+ * Only contains security policies, not execution parameters
  */
-export interface Config {
-  /** Sandbox directory */
-  sandboxDir: string;
-  /** Module configuration */
-  modules: {
-    busybox: BusyboxConfig;
-    python: PythonConfig;
+export interface GlobalSecurityConfig {
+  /** Command security policy */
+  commands?: {
+    /** Default mode: whitelist or blacklist */
+    mode?: 'whitelist' | 'blacklist';
+    /** Default command list */
+    list?: string[];
   };
-  /** Network configuration */
-  network: {
-    enabled: boolean;
+  /** Network security policy */
+  network?: {
+    /** Default: allow network access */
+    defaultEnabled?: boolean;
+    /** Domain allowlist */
     allowlist?: string[];
+    /** Domain blocklist */
     blocklist?: string[];
-  };
-  /** Security configuration */
-  security: {
-    timeout: number;
   };
 }
 

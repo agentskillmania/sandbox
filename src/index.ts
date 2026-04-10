@@ -6,15 +6,12 @@
  */
 
 export { Sandbox } from './lib/Sandbox.js';
-export { ConfigManager, initializeGlobalConfig, getGlobalConfig } from './lib/config.js';
+export { SecurityConfigManager, initializeSecurityConfig, getSecurityConfig } from './lib/config.js';
 export { getRuntimeVersions, checkInstalledWasmtime, getWasmtimeExecutable } from './lib/runtime.js';
 export type {
   ExecResult,
   SandboxConfig,
-  ModuleConfig,
-  BusyboxConfig,
-  PythonConfig,
-  Config,
+  GlobalSecurityConfig,
   RuntimeVersions,
 } from './lib/types.js';
 export { SecurityError, TimeoutError, ConfigError } from './lib/types.js';

@@ -1,162 +1,103 @@
 import { Settings } from '@agentskillmania/settings-yaml';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import type { Config, SandboxConfig } from './types.js';
+import type { GlobalSecurityConfig } from './types.js';
 
 /**
- * Default YAML configuration
+ * Default global security configuration YAML
+ * Only contains security policies, not execution parameters
  */
-const DEFAULT_YAML = `
-# Sandbox directory (auto = create temp directory)
-sandboxDir: auto
+const DEFAULT_SECURITY_YAML = `
+# Command security policy
+commands:
+  mode: blacklist        # Default: blacklist dangerous commands
+  list:                  # Commands to block by default
+    - rm
+    - format
+    - fdisk
+    - mkfs
 
-# Module configuration
-modules:
-  busybox:
-    enabled: true
-    wasmPath: ./wasm/busybox.wasm
-    commands:
-      mode: blacklist
-  python:
-    enabled: true
-    wasmPath: ./wasm/micropython.wasm
-
-# Network configuration
+# Network security policy
 network:
-  enabled: false
-  allowlist:
+  defaultEnabled: false  # Default: disable network access
+  allowlist:             # Allowed domains (when network is enabled)
     - '*.github.com'
     - registry.npmjs.org
-  blocklist:
+    - '*.npmjs.org'
+  blocklist:             # Blocked domains
     - '*.malicious.com'
     - '*.ads.com'
-
-# Security configuration
-security:
-  timeout: 5000
 `;
 
 /** Default configuration file path */
 const DEFAULT_CONFIG_PATH = join(homedir(), '.agentskillmania', 'sandbox', 'config.yaml');
 
 /**
- * Configuration manager
+ * Security configuration manager
+ * Only manages security policies from global config file
  */
-export class ConfigManager {
+export class SecurityConfigManager {
   private settings: Settings;
-  private config: Config;
+  private securityConfig: GlobalSecurityConfig;
 
   constructor(configPath: string = DEFAULT_CONFIG_PATH) {
     this.settings = new Settings(configPath);
-    this.config = {} as Config;
+    this.securityConfig = {};
   }
 
   /**
-   * Initialize configuration
+   * Initialize security configuration
    */
-  async initialize(options?: {
-    defaultYaml?: string;
-    override?: Partial<SandboxConfig>;
-  }): Promise<void> {
+  async initialize(): Promise<void> {
     await this.settings.initialize({
-      defaultYaml: options?.defaultYaml || DEFAULT_YAML,
+      defaultYaml: DEFAULT_SECURITY_YAML,
     });
 
-    // Create a mutable copy of the config
-    this.config = JSON.parse(JSON.stringify(this.settings.getValues()));
-
-    // Apply CLI argument overrides
-    if (options?.override) {
-      this._applyOverride(options.override);
-    }
+    // Create a mutable copy of the security config
+    this.securityConfig = JSON.parse(JSON.stringify(this.settings.getValues()));
   }
 
   /**
-   * Apply CLI argument overrides
+   * Get global security configuration
    */
-  private _applyOverride(override: Partial<SandboxConfig>): void {
-    if (override.sandboxDir) {
-      this.config.sandboxDir = override.sandboxDir;
-    }
-    if (override.timeout !== undefined) {
-      this.config.security.timeout = override.timeout;
-    }
-    if (override.allowNetwork !== undefined) {
-      this.config.network.enabled = override.allowNetwork;
-    }
-    if (override.commandAllowlist) {
-      this.config.modules.busybox.commands!.list = override.commandAllowlist;
-      this.config.modules.busybox.commands!.mode = 'whitelist';
-    }
-    if (override.commandBlocklist) {
-      this.config.modules.busybox.commands!.list = override.commandBlocklist;
-      this.config.modules.busybox.commands!.mode = 'blacklist';
-    }
-    if (override.networkAllowlist) {
-      this.config.network.allowlist = override.networkAllowlist;
-    }
-    if (override.networkBlocklist) {
-      this.config.network.blocklist = override.networkBlocklist;
-    }
+  getSecurityConfig(): GlobalSecurityConfig {
+    return this.securityConfig;
   }
 
   /**
-   * Get configuration
+   * Get default command security settings
    */
-  getConfig(): Config {
-    return this.config;
+  getCommandSecurity(): { mode?: 'whitelist' | 'blacklist'; list?: string[] } {
+    return this.securityConfig.commands || {};
   }
 
   /**
-   * Get Sandbox configuration
+   * Get default network security settings
    */
-  getSandboxConfig(): SandboxConfig {
-    return {
-      sandboxDir: this.config.sandboxDir,
-      timeout: this.config.security.timeout,
-      allowNetwork: this.config.network.enabled,
-      commandAllowlist: this.config.modules.busybox.commands?.mode === 'whitelist'
-        ? this.config.modules.busybox.commands.list
-        : [],
-      commandBlocklist: this.config.modules.busybox.commands?.mode === 'blacklist'
-        ? this.config.modules.busybox.commands.list
-        : [],
-      networkAllowlist: this.config.network.allowlist || [],
-      networkBlocklist: this.config.network.blocklist || [],
-    };
-  }
-
-  /**
-   * Get module configuration
-   */
-  getModuleConfig(module: 'busybox' | 'python') {
-    return this.config.modules[module];
+  getNetworkSecurity(): { defaultEnabled?: boolean; allowlist?: string[]; blocklist?: string[] } {
+    return this.securityConfig.network || {};
   }
 }
 
 /**
- * Global configuration instance
+ * Global security configuration instance
  */
-let globalConfig: ConfigManager | null = null;
+let globalSecurityConfig: SecurityConfigManager | null = null;
 
 /**
- * Initialize global configuration
+ * Initialize global security configuration
  */
-export async function initializeGlobalConfig(options?: {
-  configPath?: string;
-  defaultYaml?: string;
-  override?: Partial<SandboxConfig>;
-}): Promise<ConfigManager> {
-  if (!globalConfig) {
-    globalConfig = new ConfigManager(options?.configPath);
-    await globalConfig.initialize(options);
+export async function initializeSecurityConfig(configPath?: string): Promise<SecurityConfigManager> {
+  if (!globalSecurityConfig) {
+    globalSecurityConfig = new SecurityConfigManager(configPath);
+    await globalSecurityConfig.initialize();
   }
-  return globalConfig;
+  return globalSecurityConfig;
 }
 
 /**
- * Get global configuration
+ * Get global security configuration
  */
-export function getGlobalConfig(): ConfigManager | null {
-  return globalConfig;
+export function getSecurityConfig(): SecurityConfigManager | null {
+  return globalSecurityConfig;
 }
