@@ -162,10 +162,6 @@ network:
 
 # 安全配置
 security:
-  timeout: 5000  # 执行超时时间（毫秒）
-```
-
-**配置映射关系：**
 ### 配置
 
 全局配置文件位于 `~/.agentskillmania/sandbox/config.yaml`，**仅包含安全策略**。它为命令和网络安全提供默认值：
@@ -212,7 +208,6 @@ network:
 ## 工作原理
 
 1. **命令路由**：根据命令类型自动选择 WASM 模块
-   - Shell 命令 → `busybox.wasm`
    - Python 代码/脚本 → `micropython.wasm`
 
 2. **共享文件系统**：

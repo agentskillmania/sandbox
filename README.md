@@ -173,7 +173,6 @@ network:
 | Domain filtering | `network.allowlist/blocklist` | `--network-allowlist/blocklist` | `networkAllowlist/blocklist` |
 
 ## Architecture
-## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
