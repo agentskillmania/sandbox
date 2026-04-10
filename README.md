@@ -27,10 +27,7 @@ When installing the npm package, the script automatically installs a dedicated v
 
 - macOS (x64, arm64) ✅
 - Linux (x64, arm64) ✅
-- Windows (x64, arm64) ⚠️ Planned
-
-**Windows Support**:
-The installation script requires cross-platform extraction libraries (like adm-zip). Current version supports macOS/Linux only.
+- Windows (x64, arm64) ✅
 
 **Manual Installation** (if automatic installation fails):
 

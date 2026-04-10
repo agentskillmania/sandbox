@@ -27,7 +27,7 @@ npm install -g @agentskillmania/sandbox
 
 - macOS (x64, arm64) ✅
 - Linux (x64, arm64) ✅
-- Windows (x64, arm64) ⚠️ 计划中
+- Windows (x64, arm64) ✅
 
 **手动安装**（如果自动安装失败）：
 
