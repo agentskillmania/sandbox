@@ -84,16 +84,18 @@ exec-in-sandbox --network-allowlist "*.github.com,registry.npmjs.org" python -c 
 
 **全局选项：**
 
-| 选项 | 说明 |
-|------|------|
-| `--config <path>` | 配置文件路径 |
-| `--sandbox-dir <dir>` | 沙箱目录（默认：`.sandbox`） |
-| `--timeout <ms>` | 执行超时时间（毫秒，默认：`5000`） |
-| `--allow-network` | 允许网络访问 |
-| `--command-allowlist <cmds>` | 命令白名单（逗号分隔） |
-| `--command-blocklist <cmds>` | 命令黑名单（逗号分隔） |
-| `--network-allowlist <domains>` | 网络白名单（逗号分隔） |
-| `--network-blocklist <domains>` | 网络黑名单（逗号分隔） |
+| 命令行参数 | 配置文件路径 | 说明 |
+|-----------|-------------|------|
+| `--config <path>` | — | 配置文件路径 |
+| `--sandbox-dir <dir>` | `sandboxDir` | 沙箱目录（默认：`.sandbox`） |
+| `--timeout <ms>` | `security.timeout` | 执行超时时间（毫秒，默认：`5000`） |
+| `--allow-network` | `network.enabled` | 允许网络访问 |
+| `--command-allowlist <cmds>` | `modules.busybox.commands.list` | 命令白名单（逗号分隔，设置模式为 `whitelist`） |
+| `--command-blocklist <cmds>` | `modules.busybox.commands.list` | 命令黑名单（逗号分隔，设置模式为 `blacklist`） |
+| `--network-allowlist <domains>` | `network.allowlist` | 网络白名单（逗号分隔） |
+| `--network-blocklist <domains>` | `network.blocklist` | 网络黑名单（逗号分隔） |
+
+**配置优先级：** 命令行参数 > 配置文件 > 默认值
 
 ### Node.js SDK
 
@@ -157,8 +159,53 @@ network:
 security:
   timeout: 5000
 ```
+	console.log(result3.stdout);
+```
 
-## 架构
+### 配置
+
+你可以通过 YAML 配置文件 `~/.agentskillmania/sandbox/config.yaml` 配置沙箱：
+
+```yaml
+# 沙箱目录
+sandboxDir: .sandbox
+
+# 模块配置
+modules:
+  busybox:
+    enabled: true
+    wasmPath: ./wasm/busybox.wasm
+    commands:
+      mode: blacklist  # 或 'whitelist'
+      list: ['rm', 'format']  # 可选的命令列表
+  python:
+    enabled: true
+    wasmPath: ./wasm/micropython.wasm
+
+# 网络配置
+network:
+  enabled: false  # 允许网络访问
+  allowlist:
+    - '*.github.com'
+    - registry.npmjs.org
+  blocklist:
+    - '*.malicious.com'
+
+# 安全配置
+security:
+  timeout: 5000  # 执行超时时间（毫秒）
+```
+
+**配置映射关系：**
+
+| 功能 | 命令行参数 | 配置文件 | SDK 构造函数 |
+|------|-----------|----------|-------------|
+| 沙箱目录 | `--sandbox-dir` | `sandboxDir` | `sandboxDir` |
+| 超时时间 | `--timeout` | `security.timeout` | `timeout` |
+| 网络访问 | `--allow-network` | `network.enabled` | `allowNetwork` |
+| 命令过滤 | `--command-allowlist/blocklist` | `modules.busybox.commands` | `commandAllowlist/blocklist` |
+| 网络过滤 | `--network-allowlist/blocklist` | `network.allowlist/blocklist` | `networkAllowlist/blocklist` |
+
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

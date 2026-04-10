@@ -84,16 +84,18 @@ exec-in-sandbox --network-allowlist "*.github.com,registry.npmjs.org" python -c 
 
 **Global Options:**
 
-| Option | Description |
-|--------|-------------|
-| `--config <path>` | Configuration file path |
-| `--sandbox-dir <dir>` | Sandbox directory (default: `.sandbox`) |
-| `--timeout <ms>` | Execution timeout in milliseconds (default: `5000`) |
-| `--allow-network` | Allow network access |
-| `--command-allowlist <cmds>` | Command allowlist (comma-separated) |
-| `--command-blocklist <cmds>` | Command blocklist (comma-separated) |
-| `--network-allowlist <domains>` | Network allowlist (comma-separated) |
-| `--network-blocklist <domains>` | Network blocklist (comma-separated) |
+| CLI Option | Config File Path | Description |
+|------------|-----------------|-------------|
+| `--config <path>` | — | Configuration file path |
+| `--sandbox-dir <dir>` | `sandboxDir` | Sandbox directory (default: `.sandbox`) |
+| `--timeout <ms>` | `security.timeout` | Execution timeout in milliseconds (default: `5000`) |
+| `--allow-network` | `network.enabled` | Allow network access |
+| `--command-allowlist <cmds>` | `modules.busybox.commands.list` | Command allowlist (comma-separated, sets mode to `whitelist`) |
+| `--command-blocklist <cmds>` | `modules.busybox.commands.list` | Command blocklist (comma-separated, sets mode to `blacklist`) |
+| `--network-allowlist <domains>` | `network.allowlist` | Network allowlist (comma-separated) |
+| `--network-blocklist <domains>` | `network.blocklist` | Network blocklist (comma-separated) |
+
+**Configuration Priority:** Command-line arguments > Config file > Default values
 
 ### Node.js SDK
 
@@ -123,7 +125,54 @@ const result3 = await sandbox.runPython(`
 `);
 console.log(result3.stdout);
 ```
+	console.log(result3.stdout);
+```
 
+### Configuration
+
+You can configure the sandbox via a YAML file at `~/.agentskillmania/sandbox/config.yaml`:
+
+```yaml
+# Sandbox directory
+sandboxDir: .sandbox
+
+# Module configuration
+modules:
+  busybox:
+    enabled: true
+    wasmPath: ./wasm/busybox.wasm
+    commands:
+      mode: blacklist  # or 'whitelist'
+      list: ['rm', 'format']  # optional command list
+  python:
+    enabled: true
+    wasmPath: ./wasm/micropython.wasm
+
+# Network configuration
+network:
+  enabled: false  # allow network access
+  allowlist:
+    - '*.github.com'
+    - registry.npmjs.org
+  blocklist:
+    - '*.malicious.com'
+
+# Security configuration
+security:
+  timeout: 5000  # execution timeout (milliseconds)
+```
+
+**Configuration Mapping:**
+
+| Feature | CLI Argument | Config YAML | SDK Constructor |
+|---------|--------------|-------------|-----------------|
+| Sandbox dir | `--sandbox-dir` | `sandboxDir` | `sandboxDir` |
+| Timeout | `--timeout` | `security.timeout` | `timeout` |
+| Network | `--allow-network` | `network.enabled` | `allowNetwork` |
+| Command filter | `--command-allowlist/blocklist` | `modules.busybox.commands` | `commandAllowlist/blocklist` |
+| Network filter | `--network-allowlist/blocklist` | `network.allowlist/blocklist` | `networkAllowlist/blocklist` |
+
+## Architecture
 ## Architecture
 
 ```
