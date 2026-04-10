@@ -88,16 +88,16 @@ exec-in-sandbox --network-allowlist "*.github.com,registry.npmjs.org" python -c 
 
 **全局选项：**
 
-| 命令行参数 | 配置文件路径 | 说明 |
-|-----------|-------------|------|
+| 命令行参数 | 配置文件 | 说明 |
+|-----------|----------|------|
 | `--config <path>` | — | 配置文件路径 |
-| `--sandbox-dir <dir>` | `sandboxDir` | 沙箱目录（默认：`auto` = 系统临时目录，如 `/tmp/sandbox-xxx`） |
-| `--timeout <ms>` | `security.timeout` | 执行超时时间（毫秒，默认：`5000`） |
-| `--allow-network` | `network.enabled` | 允许网络访问 |
-| `--command-allowlist <cmds>` | `modules.busybox.commands.list` | 命令白名单（逗号分隔，设置模式为 `whitelist`） |
-| `--command-blocklist <cmds>` | `modules.busybox.commands.list` | 命令黑名单（逗号分隔，设置模式为 `blacklist`） |
-| `--network-allowlist <domains>` | `network.allowlist` | 网络白名单（逗号分隔） |
-| `--network-blocklist <domains>` | `network.blocklist` | 网络黑名单（逗号分隔） |
+| `--sandbox-dir <dir>` | — | 沙箱目录（默认：`auto` = 系统临时目录，如 `/tmp/sandbox-xxx`） |
+| `--timeout <ms>` | — | 执行超时时间（毫秒，默认：`5000`） |
+| `--allow-network` | `network.mode` | 允许网络访问 |
+| `--command-allowlist <cmds>` | `commands.mode` + `list` | 命令白名单（逗号分隔） |
+| `--command-blocklist <cmds>` | `commands.mode` + `list` | 命令黑名单（逗号分隔） |
+| `--network-allowlist <domains>` | `network.mode` + `list` | 网络白名单（逗号分隔） |
+| `--network-blocklist <domains>` | `network.mode` + `list` | 网络黑名单（逗号分隔） |
 
 **配置优先级：** 命令行参数 > 配置文件 > 默认值
 
@@ -130,38 +130,6 @@ const result3 = await sandbox.runPython(`
 console.log(result3.stdout);
 ```
 
-
-### 配置
-
-全局配置文件位于 `~/.agentskillmania/sandbox/config.yaml`，**仅包含安全策略**。它为命令和网络安全提供默认值：
-
-```yaml
-# 命令安全策略
-commands:
-  mode: blacklist        # 默认模式：whitelist 或 blacklist
-  list:                  # 默认黑名单
-    - rm
-    - format
-    - fdisk
-    - mkfs
-
-# 网络安全策略
-network:
-  defaultEnabled: false  # 默认：禁用网络访问
-  allowlist:             # 允许的域名（启用网络时）
-    - '*.github.com'
-    - registry.npmjs.org
-  blocklist:             # 禁止的域名
-    - '*.malicious.com'
-```
-
-**执行参数**（timeout、sandboxDir 等）**不在**配置文件中。必须通过以下方式指定：
-- 命令行参数：`--timeout 10000`
-- SDK 构造函数：`new Sandbox({ timeout: 10000 })`
-
-**配置优先级：**
-
-1. 命令行参数（最高优先级）
 ### 配置
 
 全局配置文件位于 `~/.agentskillmania/sandbox/config.yaml`，**仅包含安全策略**。它为命令和网络安全提供默认值：
@@ -174,6 +142,7 @@ commands:
     - rm
     - format
     - fdisk
+    - mkfs
 
 # 网络安全策略
 network:
@@ -215,9 +184,35 @@ network:
 | 域名过滤 | `network.mode` + `list` | `--network-allowlist/blocklist` | `networkAllowlist/blocklist` |
 
 ## 工作原理
-## 工作原理
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     @agentskillmania/sandbox (Node.js)       │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │              命令路由器                             │  │
+│  │  - 识别命令类型（Shell vs Python）                  │  │
+│  │  - 路由到对应的 WASM 模块                           │  │
+│  └─────────────────────────────────────────────────────┘  │
+│                          ↓                                │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │            共享沙箱目录                             │  │
+│  │  .sandbox/                                          │  │
+│  │    ├── tmp/          (临时文件)                     │  │
+│  │    ├── data/         (数据文件)                     │  │
+│  │    └── scripts/      (脚本文件)                     │  │
+│  └─────────────────────────────────────────────────────┘  │
+│         ↓                           ↓                    │
+│  ┌──────────────┐          ┌─────────────┐             │
+│  │ busybox.wasm │          │ micropython │             │
+│  │              │          │   .wasm     │             │
+│  │ Shell 命令   │          │ Python 代码 │             │
+│  └──────────────┘          └─────────────┘             │
+└─────────────────────────────────────────────────────────────┘
+```
 
 1. **命令路由**：根据命令类型自动选择 WASM 模块
+   - Shell 命令 → `busybox.wasm`
    - Python 代码/脚本 → `micropython.wasm`
 
 2. **共享文件系统**：
