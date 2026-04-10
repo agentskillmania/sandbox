@@ -32,12 +32,8 @@ When installing the npm package, the script automatically installs a dedicated v
 **Manual Installation** (if automatic installation fails):
 
 ```bash
-# If you need a proxy, set environment variables
-export HTTP_PROXY=http://proxy.example.com:7890
-export HTTPS_PROXY=http://proxy.example.com:7890
-
-# Then reinstall
-npm install @agentskillmania/sandbox
+# Reinstall wasmtime runtime using CLI
+exec-in-sandbox install-runtime
 
 # Or manually download wasmtime 43.0.0
 # Visit: https://github.com/bytecodealliance/wasmtime/releases/tag/v43.0.0

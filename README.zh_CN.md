@@ -32,12 +32,8 @@ npm install -g @agentskillmania/sandbox
 **手动安装**（如果自动安装失败）：
 
 ```bash
-# 如果需要代理，设置环境变量
-export HTTP_PROXY=http://proxy.example.com:7890
-export HTTPS_PROXY=http://proxy.example.com:7890
-
-# 然后重新安装
-npm install @agentskillmania/sandbox
+# 使用 CLI 命令重新安装 wasmtime 运行时
+exec-in-sandbox install-runtime
 
 # 或手动下载 wasmtime 43.0.0
 # 访问: https://github.com/bytecodealliance/wasmtime/releases/tag/v43.0.0
