@@ -6,6 +6,7 @@ yarn.lock
 # Sandbox directory
 .sandbox/
 .sandbox-test/
+.sandbox-test*/
 .test-sandbox/
 
 # Runtime downloads
