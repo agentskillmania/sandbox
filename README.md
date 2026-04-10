@@ -229,6 +229,50 @@ network:
    - Each execution is a separate wasmtime process
    - Process exits after execution, resources automatically released
 
+## Shell Script Support (wsh)
+
+Shell scripts (`.sh` files) are executed via **wsh**, a custom WASM shell implementation from busybox-wasi.
+
+### Supported Features
+
+✅ **Variables and expansion**: `X=hello; echo $X`
+✅ **Command substitution**: `echo $(echo inner)`
+✅ **Pipes**: `echo hello | tr a-z A-Z`
+✅ **Control flow**: `if/else`, `for` loops, `case` statements
+✅ **Logical operators**: `&&`, `||`
+✅ **Arithmetic**: `expr 10 + 20` (use `expr`, not `$((...))`)
+
+### Known Limitations
+
+These are **wsh implementation limitations**, not sandbox bugs:
+
+❌ **No `#` comments** — wsh doesn't support shell-style comments
+❌ **No function definitions** — `()` syntax not supported
+❌ **No `$((...))` arithmetic** — use `expr $X + $Y` instead
+❌ **Multiline scripts** — commands must be separated by `;`, not newlines
+
+### Script Format
+
+Due to wsh limitations, shell scripts should:
+
+```bash
+# ✅ CORRECT: No shebang, semicolons, no comments
+echo "Hello"; echo "World"
+X=10; Y=20; result=$(expr $X + $Y); echo $result
+if [ "$X" -gt 5 ]; then echo "X is large"; fi
+
+# ❌ WRONG: Uses unsupported features
+#!/bin/sh
+# This is a comment - will fail!
+X=$((10 + 20))  # Arithmetic expansion - will fail!
+```
+
+**Tips:**
+- Keep scripts single-line or semicolon-separated
+- Use `expr` for arithmetic: `result=$(expr 10 + 20)`
+- Avoid function definitions — inline commands instead
+- No `#` comments needed
+
 ## Performance
 
 | Metric       | @agentskillmania/sandbox | Docker |
