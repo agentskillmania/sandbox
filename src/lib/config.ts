@@ -7,8 +7,8 @@ import type { Config, SandboxConfig } from './types.js';
  * Default YAML configuration
  */
 const DEFAULT_YAML = `
-# Sandbox directory
-sandboxDir: .sandbox
+# Sandbox directory (auto = create temp directory)
+sandboxDir: auto
 
 # Module configuration
 modules:

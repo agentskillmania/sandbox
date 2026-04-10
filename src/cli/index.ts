@@ -20,7 +20,7 @@ program
 // Global options
 program
   .option('--config <path>', 'Configuration file path')
-  .option('--sandbox-dir <dir>', 'Sandbox directory', '.sandbox')
+  .option('--sandbox-dir <dir>', 'Sandbox directory (default: auto temp dir)')
   .option('--timeout <ms>', 'Execution timeout (milliseconds)', '5000')
   .option('--allow-network', 'Allow network access')
   .option('--command-allowlist <cmds>', 'Command allowlist (comma-separated)')

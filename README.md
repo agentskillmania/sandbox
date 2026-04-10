@@ -91,7 +91,7 @@ exec-in-sandbox --network-allowlist "*.github.com,registry.npmjs.org" python -c 
 | CLI Option | Config File Path | Description |
 |------------|-----------------|-------------|
 | `--config <path>` | — | Configuration file path |
-| `--sandbox-dir <dir>` | `sandboxDir` | Sandbox directory (default: `.sandbox`) |
+| `--sandbox-dir <dir>` | `sandboxDir` | Sandbox directory (default: `auto` = temp dir in `~/.agentskillmania/sandbox/tmp/`) |
 | `--timeout <ms>` | `security.timeout` | Execution timeout in milliseconds (default: `5000`) |
 | `--allow-network` | `network.enabled` | Allow network access |
 | `--command-allowlist <cmds>` | `modules.busybox.commands.list` | Command allowlist (comma-separated, sets mode to `whitelist`) |
@@ -137,8 +137,8 @@ console.log(result3.stdout);
 You can configure the sandbox via a YAML file at `~/.agentskillmania/sandbox/config.yaml`:
 
 ```yaml
-# Sandbox directory
-sandboxDir: .sandbox
+# Sandbox directory (auto = create temp directory)
+sandboxDir: auto
 
 # Module configuration
 modules:

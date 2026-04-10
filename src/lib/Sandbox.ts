@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdtempSync } from 'node:fs';
+import { join, tmpdir } from 'node:path';
+import { homedir } from 'node:os';
 import { mkdirp } from 'mkdirp';
 import type {
   ExecResult,
@@ -13,7 +14,7 @@ import { getWasmtimeExecutable, getWasmPaths, getRuntimeVersions } from './runti
  * Default configuration
  */
 const DEFAULT_CONFIG: Required<SandboxConfig> = {
-  sandboxDir: '.sandbox',
+  sandboxDir: 'auto', // 'auto' means create temp directory
   timeout: 5000,
   allowNetwork: false,
   commandAllowlist: [],
@@ -32,7 +33,17 @@ export class Sandbox {
 
   constructor(options: SandboxConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...options } as Required<SandboxConfig>;
-    this.sandboxDir = this.config.sandboxDir;
+
+    // Handle 'auto' for sandbox directory
+    if (this.config.sandboxDir === 'auto') {
+      // Create temp directory in ~/.agentskillmania/sandbox/tmp/
+      const baseTmpDir = join(homedir(), '.agentskillmania', 'sandbox', 'tmp');
+      mkdirp.sync(baseTmpDir);
+      this.sandboxDir = mkdtempSync(join(baseTmpDir, 'sandbox-'));
+    } else {
+      this.sandboxDir = this.config.sandboxDir;
+    }
+
     this.wasmPaths = getWasmPaths();
 
     // Ensure sandbox directory exists

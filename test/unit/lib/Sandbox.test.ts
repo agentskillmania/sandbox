@@ -31,6 +31,19 @@ vi.mock('node:child_process', () => ({
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => true),
   mkdirSync: vi.fn(),
+  mkdtempSync: vi.fn((prefix) => prefix + '12345'),
+}));
+
+// Mock os
+vi.mock('node:os', () => ({
+  homedir: vi.fn(() => '/mock/home'),
+}));
+
+// Mock mkdirp
+vi.mock('mkdirp', () => ({
+  mkdirp: {
+    sync: vi.fn(),
+  },
 }));
 
 describe('Sandbox', () => {
