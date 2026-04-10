@@ -160,12 +160,15 @@ program
 /**
  * Build SandboxConfig from CLI options and security defaults
  */
-function buildSandboxConfig(opts: any, securityDefaults?: {
-  commandMode?: 'whitelist' | 'blacklist';
-  commandList?: string[];
-  networkMode?: 'whitelist' | 'blacklist';
-  networkList?: string[];
-}): SandboxConfig {
+function buildSandboxConfig(
+  opts: any,
+  securityDefaults?: {
+    commandMode?: 'whitelist' | 'blacklist';
+    commandList?: string[];
+    networkMode?: 'whitelist' | 'blacklist';
+    networkList?: string[];
+  }
+): SandboxConfig {
   const config: SandboxConfig = {};
 
   // Apply sandbox directory if specified

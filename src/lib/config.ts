@@ -83,7 +83,9 @@ let globalSecurityConfig: SecurityConfigManager | null = null;
 /**
  * Initialize global security configuration
  */
-export async function initializeSecurityConfig(configPath?: string): Promise<SecurityConfigManager> {
+export async function initializeSecurityConfig(
+  configPath?: string
+): Promise<SecurityConfigManager> {
   if (!globalSecurityConfig) {
     globalSecurityConfig = new SecurityConfigManager(configPath);
     await globalSecurityConfig.initialize();

@@ -6,8 +6,16 @@
  */
 
 export { Sandbox } from './lib/Sandbox.js';
-export { SecurityConfigManager, initializeSecurityConfig, getSecurityConfig } from './lib/config.js';
-export { getRuntimeVersions, checkInstalledWasmtime, getWasmtimeExecutable } from './lib/runtime.js';
+export {
+  SecurityConfigManager,
+  initializeSecurityConfig,
+  getSecurityConfig,
+} from './lib/config.js';
+export {
+  getRuntimeVersions,
+  checkInstalledWasmtime,
+  getWasmtimeExecutable,
+} from './lib/runtime.js';
 export type {
   ExecResult,
   SandboxConfig,

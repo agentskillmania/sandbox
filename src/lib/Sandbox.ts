@@ -3,10 +3,7 @@ import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdirp } from 'mkdirp';
-import type {
-  ExecResult,
-  SandboxConfig,
-} from './types.js';
+import type { ExecResult, SandboxConfig } from './types.js';
 import { SecurityError, TimeoutError } from './types.js';
 import { getWasmtimeExecutable, getWasmPaths, getRuntimeVersions } from './runtime.js';
 
@@ -84,7 +81,16 @@ export class Sandbox {
     const args: string[] = [];
 
     if (this.config.allowNetwork) {
-      args.push('-S', 'tcp=y', '-S', 'udp=y', '-S', 'inherit-network', '-S', 'allow-ip-name-lookup=y');
+      args.push(
+        '-S',
+        'tcp=y',
+        '-S',
+        'udp=y',
+        '-S',
+        'inherit-network',
+        '-S',
+        'allow-ip-name-lookup=y'
+      );
     }
 
     return args;
@@ -109,17 +115,22 @@ export class Sandbox {
       // Get dedicated wasmtime executable
       const wasmtimeExe = getWasmtimeExecutable();
       if (!existsSync(wasmtimeExe)) {
-        reject(new Error(
-          `Wasmtime not found: ${wasmtimeExe}\nPlease run: npm install @agentskillmania/sandbox`
-        ));
+        reject(
+          new Error(
+            `Wasmtime not found: ${wasmtimeExe}\nPlease run: npm install @agentskillmania/sandbox`
+          )
+        );
         return;
       }
 
       // Build wasmtime arguments
       const wasmtimeArgs = [
-        '-W', 'exceptions=y',
-        '-S', 'cli=y',
-        '--dir', this.sandboxDir,
+        '-W',
+        'exceptions=y',
+        '-S',
+        'cli=y',
+        '--dir',
+        this.sandboxDir,
         ...this._buildNetworkArgs(),
         modulePath,
         ...args,
@@ -225,7 +236,9 @@ export class Sandbox {
         case 'micropython':
           return this._executePythonScript(scriptPath, scriptArgs);
         default:
-          throw new Error(`Unsupported shebang interpreter: ${shebangInterpreter}. Supported: sh, bash, wsh, python, python3, micropython`);
+          throw new Error(
+            `Unsupported shebang interpreter: ${shebangInterpreter}. Supported: sh, bash, wsh, python, python3, micropython`
+          );
       }
     }
 
@@ -319,7 +332,10 @@ export class Sandbox {
    * Reads the script content and passes it directly
    * Note: Script arguments are not supported by this WASM build
    */
-  private async _executePythonScript(scriptPath: string, scriptArgs: string[]): Promise<ExecResult> {
+  private async _executePythonScript(
+    scriptPath: string,
+    scriptArgs: string[]
+  ): Promise<ExecResult> {
     const scriptContent = readFileSync(scriptPath, 'utf-8');
 
     // Warn if script arguments are provided (not supported)
