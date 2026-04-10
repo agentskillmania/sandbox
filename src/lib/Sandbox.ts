@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync } from 'node:fs';
-import { join, tmpdir } from 'node:path';
-import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { mkdirp } from 'mkdirp';
 import type {
   ExecResult,
@@ -36,10 +36,8 @@ export class Sandbox {
 
     // Handle 'auto' for sandbox directory
     if (this.config.sandboxDir === 'auto') {
-      // Create temp directory in ~/.agentskillmania/sandbox/tmp/
-      const baseTmpDir = join(homedir(), '.agentskillmania', 'sandbox', 'tmp');
-      mkdirp.sync(baseTmpDir);
-      this.sandboxDir = mkdtempSync(join(baseTmpDir, 'sandbox-'));
+      // Create temp directory in system temp directory
+      this.sandboxDir = mkdtempSync(join(tmpdir(), 'sandbox-'));
     } else {
       this.sandboxDir = this.config.sandboxDir;
     }

@@ -36,6 +36,7 @@ vi.mock('node:fs', () => ({
 
 // Mock os
 vi.mock('node:os', () => ({
+  tmpdir: vi.fn(() => '/tmp'),
   homedir: vi.fn(() => '/mock/home'),
 }));
 

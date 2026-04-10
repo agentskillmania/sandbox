@@ -91,7 +91,7 @@ exec-in-sandbox --network-allowlist "*.github.com,registry.npmjs.org" python -c 
 | 命令行参数 | 配置文件路径 | 说明 |
 |-----------|-------------|------|
 | `--config <path>` | — | 配置文件路径 |
-| `--sandbox-dir <dir>` | `sandboxDir` | 沙箱目录（默认：`auto` = 在 `~/.agentskillmania/sandbox/tmp/` 中创建临时目录） |
+| `--sandbox-dir <dir>` | `sandboxDir` | 沙箱目录（默认：`auto` = 系统临时目录，如 `/tmp/sandbox-xxx`） |
 | `--timeout <ms>` | `security.timeout` | 执行超时时间（毫秒，默认：`5000`） |
 | `--allow-network` | `network.enabled` | 允许网络访问 |
 | `--command-allowlist <cmds>` | `modules.busybox.commands.list` | 命令白名单（逗号分隔，设置模式为 `whitelist`） |
