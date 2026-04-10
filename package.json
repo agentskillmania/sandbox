@@ -1,6 +1,7 @@
 {
   "name": "@agentskillmania/sandbox",
   "version": "0.1.0",
+  "private": false,
   "description": "WASM sandbox for busybox and micropython",
   "type": "module",
   "main": "./dist/index.cjs",
