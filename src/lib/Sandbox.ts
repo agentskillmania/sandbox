@@ -223,7 +223,7 @@ export class Sandbox {
         case 'python':
         case 'python3':
         case 'micropython':
-          return this._execWasm(this.wasmPaths.micropython, [scriptPath, ...scriptArgs]);
+          return this._executePythonScript(scriptPath, scriptArgs);
         default:
           throw new Error(`Unsupported shebang interpreter: ${shebangInterpreter}. Supported: sh, bash, wsh, python, python3, micropython`);
       }
@@ -236,7 +236,7 @@ export class Sandbox {
       case 'sh':
         return this._executeShellScript(scriptPath, scriptArgs);
       case 'py':
-        return this._execWasm(this.wasmPaths.micropython, [scriptPath, ...scriptArgs]);
+        return this._executePythonScript(scriptPath, scriptArgs);
       default:
         throw new Error(`Unsupported script type: .${ext}. Supported: .sh, .py`);
     }
@@ -315,17 +315,58 @@ export class Sandbox {
   }
 
   /**
+   * Execute a Python script via micropython.wasm
+   * Reads the script content and passes it directly
+   * Note: Script arguments are not supported by this WASM build
+   */
+  private async _executePythonScript(scriptPath: string, scriptArgs: string[]): Promise<ExecResult> {
+    const scriptContent = readFileSync(scriptPath, 'utf-8');
+
+    // Warn if script arguments are provided (not supported)
+    if (scriptArgs.length > 0) {
+      console.warn(`Warning: Script arguments are not supported for .py files in WASM sandbox`);
+    }
+
+    // Check for shebang and remove it
+    const lines = scriptContent.split('\n');
+    const firstLine = lines[0].trim();
+
+    let codeToExecute = scriptContent;
+    if (firstLine.startsWith('#!')) {
+      // Shebang found - remove it
+      codeToExecute = lines.slice(1).join('\n');
+    }
+
+    return this._execWasm(this.wasmPaths.micropython, [codeToExecute]);
+  }
+
+  /**
    * Execute Python code string
+   * Note: micropython.wasm expects code directly, not -c option
    */
   async runPython(code: string): Promise<ExecResult> {
-    return this._execWasm(this.wasmPaths.micropython, ['-c', code]);
+    return this._execWasm(this.wasmPaths.micropython, [code]);
   }
 
   /**
    * Execute Python script file
+   * Note: micropython.wasm doesn't support file paths, so we read content first
    */
   async runPythonScript(scriptPath: string, args: string[] = []): Promise<ExecResult> {
-    return this._execWasm(this.wasmPaths.micropython, [scriptPath, ...args]);
+    // Check if script exists
+    if (!existsSync(scriptPath)) {
+      throw new Error(`Script file not found: ${scriptPath}`);
+    }
+
+    // Read script content
+    const scriptContent = readFileSync(scriptPath, 'utf-8');
+
+    // Warn if script arguments are provided (not supported by this WASM build)
+    if (args.length > 0) {
+      console.warn(`Warning: Script arguments are not supported for .py files in WASM sandbox`);
+    }
+
+    return this._execWasm(this.wasmPaths.micropython, [scriptContent]);
   }
 
   /**
