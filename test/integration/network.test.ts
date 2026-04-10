@@ -100,22 +100,23 @@ describe('Network Integration Tests', () => {
         timeout: 15000,
       });
 
-      // Download from example.com
+      // Try to download from www.baidu.com (more reliable in China network)
       const result = await sandbox.runShell('wget', [
         '-q',
         '-O',
         '.sandbox-test-network/download.txt',
-        'http://example.com/',
+        'http://www.baidu.com/',
       ]);
 
       console.log('Exit code:', result.exitCode);
       console.log('STDERR:', result.stderr);
 
-      // Check if download succeeded
+      // Note: This test may fail depending on network environment
+      // www.baidu.com is more reliable in China than example.com
       if (result.exitCode === 0) {
         expect(result.stderr).toBe('');
       } else {
-        console.log('wget failed - check if network is available');
+        console.log('wget failed - this may be expected in some network environments');
       }
     }, 20000);
 
