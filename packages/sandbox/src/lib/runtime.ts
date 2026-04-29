@@ -1,7 +1,10 @@
 import { execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** Dedicated wasmtime installation directory */
 const WASMTIME_INSTALL_DIR = join(homedir(), '.agentskillmania', 'sandbox', 'wasmtime');
@@ -41,8 +44,8 @@ export function checkInstalledWasmtime(): {
  */
 export function getWasmPaths() {
   return {
-    busybox: join(process.cwd(), 'wasm', 'busybox.wasm'),
-    micropython: join(process.cwd(), 'wasm', 'micropython.wasm'),
+    busybox: join(__dirname, '..', '..', 'wasm', 'busybox.wasm'),
+    micropython: join(__dirname, '..', '..', 'wasm', 'micropython.wasm'),
   };
 }
 
@@ -106,13 +109,7 @@ export function checkRuntimeReady(): { ready: boolean } {
  */
 async function installRuntime(): Promise<boolean> {
   try {
-    const installScript = join(
-      process.cwd(),
-      'packages',
-      'sandbox',
-      'scripts',
-      'install-runtime.cjs'
-    );
+    const installScript = join(__dirname, '..', '..', 'scripts', 'install-runtime.cjs');
     execSync(`node "${installScript}"`, {
       stdio: 'inherit',
       cwd: process.cwd(),

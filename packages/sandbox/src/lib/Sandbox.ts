@@ -46,6 +46,13 @@ export class Sandbox {
   }
 
   /**
+   * Update sandbox configuration at runtime
+   */
+  updateConfig(updates: Partial<Pick<SandboxConfig, 'timeout' | 'allowNetwork'>>): void {
+    this.config = { ...this.config, ...updates };
+  }
+
+  /**
    * Ensure sandbox directory exists
    */
   private _ensureSandboxDir(): void {
@@ -123,8 +130,8 @@ export class Sandbox {
         return;
       }
 
-      // wsh 需要 /tmp 目录来创建管道临时文件
-      const isWsh = args.includes('wsh') || args.some((a) => a.includes('wsh'));
+      // wsh needs /tmp directory for pipe temp files
+      const isWsh = args[0] === 'wsh' || (args[0] === 'busybox' && args.includes('wsh'));
 
       // Build wasmtime arguments
       const wasmtimeArgs = [
@@ -163,8 +170,8 @@ export class Sandbox {
         clearTimeout(timer);
         if (timedOut) return;
 
-        // wsh 的管道输出会写到 stderr（freopen 无法恢复 stdout）
-        // 将 stderr 合并到 stdout，与 busybox-wasi 测试框架行为一致
+        // wsh pipe output goes to stderr (freopen cannot restore stdout)
+        // merge stderr into stdout to match busybox-wasi test framework behavior
         const finalStdout = isWsh && stderr ? stdout + '\n' + stderr : stdout;
         const finalStderr = isWsh ? '' : stderr;
 
@@ -331,15 +338,7 @@ export class Sandbox {
       }
     }
 
-    // wsh requires semicolons instead of newlines for command separation
-    // Filter out empty lines and replace remaining newlines with semicolons
-    const commands = scriptContent
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .join('; ');
-
-    return this._execWasm(this.wasmPaths.busybox, ['wsh', '-c', commands]);
+    return this._execWasm(this.wasmPaths.busybox, ['wsh', '-c', scriptContent]);
   }
 
   /**

@@ -32,9 +32,9 @@ export const runPythonTool = {
   async handler(sandbox: Sandbox, args: any) {
     const { code, timeout, allowNetwork } = args;
 
-    // 更新 sandbox 配置
-    if (timeout !== undefined) (sandbox as any).config.timeout = timeout;
-    if (allowNetwork !== undefined) (sandbox as any).config.allowNetwork = allowNetwork;
+    // Update sandbox config
+    if (timeout !== undefined) sandbox.updateConfig({ timeout });
+    if (allowNetwork !== undefined) sandbox.updateConfig({ allowNetwork });
 
     const result = await sandbox.runPython(code);
 

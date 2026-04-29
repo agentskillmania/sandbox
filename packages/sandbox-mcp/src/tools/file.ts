@@ -5,7 +5,22 @@
 
 import { Sandbox } from '@agentskillmania/sandbox';
 import { writeFile, readFile, unlink, readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve, normalize } from 'node:path';
+
+/**
+ * Resolve and validate a path within the sandbox directory.
+ * Rejects path traversal attempts that escape the sandbox.
+ */
+function resolveSandboxPath(sandboxDir: string, relativePath: string): string {
+  const fullPath = normalize(resolve(sandboxDir, relativePath));
+  const resolvedSandbox = normalize(resolve(sandboxDir));
+  const separator = resolvedSandbox.endsWith('/') ? '' : '/';
+  if (!fullPath.startsWith(resolvedSandbox + separator) && fullPath !== resolvedSandbox) {
+    throw new Error('Path traversal detected: path escapes sandbox directory');
+  }
+  // Return a normalized path relative to sandboxDir (preserves relative/absolute form)
+  return normalize(join(sandboxDir, normalize(relativePath)));
+}
 
 // read_file tool
 export const readFileTool = {
@@ -27,9 +42,9 @@ export const readFileTool = {
   async handler(sandbox: Sandbox, args: any) {
     const { path } = args;
     const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
-    const fullPath = join(sandboxDir, path);
 
     try {
+      const fullPath = resolveSandboxPath(sandboxDir, path);
       const content = await readFile(fullPath, 'utf-8');
       return {
         content: [
@@ -77,9 +92,9 @@ export const writeFileTool = {
   async handler(sandbox: Sandbox, args: any) {
     const { path, content } = args;
     const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
-    const fullPath = join(sandboxDir, path);
 
     try {
+      const fullPath = resolveSandboxPath(sandboxDir, path);
       await writeFile(fullPath, content, 'utf-8');
       return {
         content: [
@@ -123,9 +138,9 @@ export const listFilesTool = {
   async handler(sandbox: Sandbox, args: any) {
     const { path = '.' } = args;
     const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
-    const fullPath = join(sandboxDir, path);
 
     try {
+      const fullPath = resolveSandboxPath(sandboxDir, path);
       const files = await readdir(fullPath);
       return {
         content: [
@@ -169,9 +184,9 @@ export const deleteFileTool = {
   async handler(sandbox: Sandbox, args: any) {
     const { path } = args;
     const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
-    const fullPath = join(sandboxDir, path);
 
     try {
+      const fullPath = resolveSandboxPath(sandboxDir, path);
       await unlink(fullPath);
       return {
         content: [

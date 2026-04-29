@@ -18,6 +18,7 @@ describe('run_shell tool', () => {
   beforeEach(() => {
     mockSandbox = {
       runShell: vi.fn(),
+      updateConfig: vi.fn(),
       config: {},
     };
   });
@@ -86,7 +87,7 @@ describe('run_shell tool', () => {
       timeout: 500,
     });
 
-    expect(mockSandbox.config?.timeout).toBe(500);
+    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ timeout: 500 });
   });
 
   it('should handle allowNetwork true option', async () => {
@@ -102,7 +103,7 @@ describe('run_shell tool', () => {
       allowNetwork: true,
     });
 
-    expect(mockSandbox.config?.allowNetwork).toBe(true);
+    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ allowNetwork: true });
   });
 
   it('should handle allowNetwork false option', async () => {
@@ -117,7 +118,7 @@ describe('run_shell tool', () => {
       allowNetwork: false,
     });
 
-    expect(mockSandbox.config?.allowNetwork).toBe(false);
+    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ allowNetwork: false });
   });
 
   it('should have correct tool definition', () => {

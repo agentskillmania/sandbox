@@ -71,14 +71,9 @@ describe('runtime', () => {
 
   describe('getWasmPaths', () => {
     it('should return correct WASM paths', () => {
-      const originalCwd = process.cwd;
-      process.cwd = vi.fn(() => '/mock/cwd') as any;
-
       const paths = getWasmPaths();
-      expect(paths.busybox).toBe('/mock/cwd/wasm/busybox.wasm');
-      expect(paths.micropython).toBe('/mock/cwd/wasm/micropython.wasm');
-
-      process.cwd = originalCwd;
+      expect(paths.busybox).toMatch(/wasm[/\\]busybox\.wasm$/);
+      expect(paths.micropython).toMatch(/wasm[/\\]micropython\.wasm$/);
     });
   });
 
@@ -183,18 +178,14 @@ describe('runtime', () => {
 
     it('should use correct install script path', async () => {
       vi.mocked(existsSync).mockReturnValue(false);
-      const originalCwd = process.cwd;
-      process.cwd = vi.fn(() => '/mock/cwd') as any;
       vi.mocked(execSync).mockReturnValue('');
 
       await ensureRuntime();
 
       expect(execSync).toHaveBeenCalledWith(
-        expect.stringContaining('/mock/cwd/packages/sandbox/scripts/install-runtime.cjs'),
+        expect.stringContaining('scripts/install-runtime.cjs'),
         expect.any(Object)
       );
-
-      process.cwd = originalCwd;
     });
   });
 });

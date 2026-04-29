@@ -155,4 +155,10 @@ describe('MCP Config: loadConfig integration', () => {
     const config = await loadConfig({});
     expect(config.timeout).toBe(8000);
   });
+
+  it('should disable network for blacklist mode with non-empty list', async () => {
+    // Global config mock returns blacklist with list, so network should be disabled
+    const config = await loadConfig({});
+    expect(config.allowNetwork).toBe(false);
+  });
 });

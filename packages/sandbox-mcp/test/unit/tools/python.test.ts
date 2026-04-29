@@ -18,6 +18,7 @@ describe('run_python tool', () => {
   beforeEach(() => {
     mockSandbox = {
       runPython: vi.fn(),
+      updateConfig: vi.fn(),
       config: {},
     };
   });
@@ -82,7 +83,7 @@ describe('run_python tool', () => {
       timeout: 3000,
     });
 
-    expect(mockSandbox.config?.timeout).toBe(3000);
+    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ timeout: 3000 });
   });
 
   it('should handle allowNetwork true option', async () => {
@@ -97,7 +98,7 @@ describe('run_python tool', () => {
       allowNetwork: true,
     });
 
-    expect(mockSandbox.config?.allowNetwork).toBe(true);
+    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ allowNetwork: true });
   });
 
   it('should handle allowNetwork false option', async () => {
@@ -112,7 +113,7 @@ describe('run_python tool', () => {
       allowNetwork: false,
     });
 
-    expect(mockSandbox.config?.allowNetwork).toBe(false);
+    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ allowNetwork: false });
   });
 
   it('should have correct tool definition', () => {

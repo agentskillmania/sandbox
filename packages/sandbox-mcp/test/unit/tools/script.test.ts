@@ -24,6 +24,8 @@ describe('run_script tool', () => {
   beforeEach(() => {
     mockSandbox = {
       runShell: vi.fn(),
+      runPythonScript: vi.fn(),
+      updateConfig: vi.fn(),
       config: {},
     };
     vi.mocked(writeFile).mockResolvedValue(undefined);
@@ -44,15 +46,15 @@ describe('run_script tool', () => {
 
     expect(writeFile).toHaveBeenCalled();
     expect(mockSandbox.runShell).toHaveBeenCalledWith(
-      'busybox',
-      expect.arrayContaining([expect.stringContaining('temp_script.sh')])
+      expect.stringContaining('temp_script'),
+      []
     );
     expect(result.content[0].text).toContain('✅');
     expect(result.content[0].text).toContain('hello world');
   });
 
-  it('should execute python script', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+  it('should execute python script via runPythonScript', async () => {
+    mockSandbox.runPythonScript.mockResolvedValue({
       exitCode: 0,
       stdout: '42',
       stderr: '',
@@ -64,10 +66,8 @@ describe('run_script tool', () => {
     });
 
     expect(writeFile).toHaveBeenCalled();
-    expect(mockSandbox.runShell).toHaveBeenCalledWith(
-      'busybox',
-      expect.arrayContaining([expect.stringContaining('temp_script.py')])
-    );
+    expect(mockSandbox.runPythonScript).toHaveBeenCalled();
+    expect(mockSandbox.runShell).not.toHaveBeenCalled();
     expect(result.content[0].text).toContain('42');
   });
 
@@ -102,7 +102,7 @@ describe('run_script tool', () => {
       timeout: 5000,
     });
 
-    expect(mockSandbox.config?.timeout).toBe(5000);
+    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ timeout: 5000 });
   });
 
   it('should clean up temp script file after execution', async () => {
@@ -232,5 +232,24 @@ describe('run_script tool', () => {
     });
 
     expect(result.content[0].text).toContain('✅');
+  });
+
+  it('should generate unique temp script filenames', async () => {
+    mockSandbox.runShell.mockResolvedValue({
+      exitCode: 0,
+      stdout: 'test',
+      stderr: '',
+    });
+
+    await runScriptTool.handler(mockSandbox, { language: 'sh', content: 'echo 1' });
+    await runScriptTool.handler(mockSandbox, { language: 'sh', content: 'echo 2' });
+
+    const calls = vi.mocked(writeFile).mock.calls;
+    const path1 = calls[calls.length - 2][0] as string;
+    const path2 = calls[calls.length - 1][0] as string;
+
+    expect(path1).not.toBe(path2);
+    expect(path1).toMatch(/temp_script_\d+_[a-z0-9]+\.sh/);
+    expect(path2).toMatch(/temp_script_\d+_[a-z0-9]+\.sh/);
   });
 });

@@ -35,23 +35,26 @@ export const runScriptTool = {
   async handler(sandbox: Sandbox, args: any) {
     const { language, content, timeout } = args;
 
-    // 获取 sandbox 目录
+    // Get sandbox directory
     const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
     const ext = language === 'sh' ? 'sh' : 'py';
-    const scriptPath = join(sandboxDir, `temp_script.${ext}`);
+    const scriptPath = join(
+      sandboxDir,
+      `temp_script_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+    );
 
     try {
-      // 写入脚本文件
+      // Write script file
       await writeFile(scriptPath, content, 'utf-8');
 
-      // 更新 sandbox 配置
-      if (timeout !== undefined) (sandbox as any).config.timeout = timeout;
+      // Update sandbox config
+      if (timeout !== undefined) sandbox.updateConfig({ timeout });
 
-      // 执行脚本
+      // Execute script
       const result =
         language === 'sh'
-          ? await sandbox.runShell('busybox', [scriptPath])
-          : await sandbox.runShell('busybox', [scriptPath]);
+          ? await sandbox.runShell(scriptPath, [])
+          : await sandbox.runPythonScript(scriptPath, []);
 
       return {
         content: [

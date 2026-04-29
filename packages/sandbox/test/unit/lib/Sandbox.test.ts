@@ -258,6 +258,48 @@ describe('Sandbox', () => {
       result = await sandbox.runShell('busybox', ['test.sh']);
       expect(result.exitCode).toBe(0);
     });
+
+    it('should preserve newlines and comments in shell scripts', async () => {
+      const { readFileSync } = await import('node:fs');
+      vi.mocked(readFileSync).mockReturnValue(
+        '# This is a comment\nX=10\nY=20\necho $((X + Y))'
+      );
+
+      await sandbox.runShell('busybox', ['test.sh']);
+
+      const lastCall = mockSpawn.mock.lastCall;
+      const wasmtimeArgs = lastCall[1];
+      const cIndex = wasmtimeArgs.indexOf('-c');
+      const scriptContent = wasmtimeArgs[cIndex + 1];
+
+      // Should preserve original newlines, not convert all to semicolons
+      expect(scriptContent).toContain('\n');
+      expect(scriptContent).toContain('# This is a comment');
+
+      // Restore default mock
+      vi.mocked(readFileSync).mockRestore();
+    });
+
+    it('should not treat wsh substring as wsh command', async () => {
+      // Mock stderr output
+      mockSpawn.mockReturnValue({
+        stdout: { on: vi.fn() },
+        stderr: {
+          on: vi.fn((event, callback) => {
+            if (event === 'data') callback(Buffer.from('error output'));
+          }),
+        },
+        on: vi.fn((event, callback) => {
+          if (event === 'close') setImmediate(() => callback(0));
+        }),
+        kill: vi.fn(),
+      });
+
+      const result = await sandbox.runShell('cat', ['mywshfile.txt']);
+
+      // Non-wsh commands should preserve stderr separately
+      expect(result.stderr).toBe('error output');
+    });
   });
 
   describe('runPythonScript - error cases', () => {

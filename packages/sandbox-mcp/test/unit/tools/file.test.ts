@@ -68,6 +68,24 @@ describe('read_file tool', () => {
     expect(readFileTool.definition.inputSchema.properties?.path).toBeDefined();
     expect(readFileTool.definition.inputSchema.required).toContain('path');
   });
+
+  it('should reject path traversal attempts', async () => {
+    const result = await readFileTool.handler(mockSandbox, {
+      path: '../../../etc/passwd',
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Path traversal');
+  });
+
+  it('should reject path traversal with nested ..', async () => {
+    const result = await readFileTool.handler(mockSandbox, {
+      path: 'foo/../../bar',
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Path traversal');
+  });
 });
 
 describe('write_file tool', () => {
@@ -130,6 +148,16 @@ describe('write_file tool', () => {
     expect(writeFileTool.definition.inputSchema.required).toContain('path');
     expect(writeFileTool.definition.inputSchema.required).toContain('content');
   });
+
+  it('should reject path traversal in write', async () => {
+    const result = await writeFileTool.handler(mockSandbox, {
+      path: '../../../etc/passwd',
+      content: 'malicious',
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Path traversal');
+  });
 });
 
 describe('list_files tool', () => {
@@ -186,6 +214,15 @@ describe('list_files tool', () => {
     expect(listFilesTool.definition.name).toBe('list_files');
     expect(listFilesTool.definition.inputSchema.properties?.path).toBeDefined();
     expect(listFilesTool.definition.inputSchema.required).not.toContain('path');
+  });
+
+  it('should reject path traversal in list', async () => {
+    const result = await listFilesTool.handler(mockSandbox, {
+      path: '../../../etc',
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Path traversal');
   });
 });
 
@@ -244,5 +281,14 @@ describe('delete_file tool', () => {
     expect(deleteFileTool.definition.name).toBe('delete_file');
     expect(deleteFileTool.definition.inputSchema.properties?.path).toBeDefined();
     expect(deleteFileTool.definition.inputSchema.required).toContain('path');
+  });
+
+  it('should reject path traversal in delete', async () => {
+    const result = await deleteFileTool.handler(mockSandbox, {
+      path: '../../../etc/passwd',
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Path traversal');
   });
 });

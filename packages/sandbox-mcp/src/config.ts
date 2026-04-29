@@ -31,10 +31,9 @@ export async function loadConfig(userConfig?: MCPServerConfig): Promise<MCPServe
   return {
     timeout: userConfig?.timeout ?? envConfig.timeout ?? 5000,
     allowNetwork:
-      userConfig?.allowNetwork ??
-      envConfig.allowNetwork ??
-      (networkSecurity.mode === 'whitelist' ||
-        (networkSecurity.mode === 'blacklist' && (networkSecurity.list?.length ?? 0) > 0)),
+      userConfig?.allowNetwork ?? envConfig.allowNetwork ?? networkSecurity.mode === 'whitelist',
+    // Note: Domain-level filtering is not supported by wasmtime WASI preview2.
+    // Whitelist mode enables network; blacklist mode disables it entirely.
     sandboxDir: userConfig?.sandboxDir ?? envConfig.sandboxDir ?? 'auto',
     commandMode: userConfig?.commandMode ?? commandSecurity.mode,
     commandList: userConfig?.commandList ?? commandSecurity.list,

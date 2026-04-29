@@ -5,19 +5,13 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { Sandbox } from '@agentskillmania/sandbox';
-import { SandboxConfig } from '@agentskillmania/sandbox';
+import { Sandbox, SandboxConfig, checkRuntimeReady, ensureRuntime } from '@agentskillmania/sandbox';
 import { createToolHandlers } from './tools/index.js';
+import { createRequire } from 'node:module';
+import type { MCPServerConfig } from './config.js';
 
-export interface MCPServerConfig {
-  timeout?: number;
-  allowNetwork?: boolean;
-  sandboxDir?: string;
-  commandMode?: 'blacklist' | 'whitelist';
-  commandList?: string[];
-  networkMode?: 'blacklist' | 'whitelist';
-  networkList?: string[];
-}
+const require = createRequire(import.meta.url);
+const pkg = require('../package.json');
 
 /**
  * 创建 MCP server 实例
@@ -41,7 +35,7 @@ export function createMCPServer(userConfig?: MCPServerConfig) {
   const server = new Server(
     {
       name: '@agentskillmania/sandbox-mcp',
-      version: '0.1.0',
+      version: pkg.version,
     },
     {
       capabilities: {
@@ -62,8 +56,7 @@ export function createMCPServer(userConfig?: MCPServerConfig) {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
-    // 每次调用前检查 runtime（容错机制）
-    const { checkRuntimeReady, ensureRuntime } = await import('@agentskillmania/sandbox');
+    // Check runtime before each call (resilience mechanism)
     const runtimeCheck = checkRuntimeReady();
     if (!runtimeCheck.ready) {
       await ensureRuntime();

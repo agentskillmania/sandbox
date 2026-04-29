@@ -5,17 +5,21 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { createRequire } from 'node:module';
 import { Sandbox } from '../lib/Sandbox.js';
 import { initializeSecurityConfig } from '../lib/config.js';
 import { getRuntimeVersions } from '../lib/runtime.js';
 import type { SandboxConfig } from '../lib/types.js';
+
+const require = createRequire(import.meta.url);
+const pkg = require('../../package.json');
 
 const program = new Command();
 
 program
   .name('exec-in-sandbox')
   .description('@agentskillmania/sandbox - unified WASM sandbox tool')
-  .version('0.1.0');
+  .version(pkg.version);
 
 // Global options
 program
