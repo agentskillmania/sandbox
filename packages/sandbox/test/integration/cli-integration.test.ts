@@ -1,133 +1,103 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { getWasmtimeExecutable } from '../../src/lib/runtime.js';
 
 describe('CLI Integration Tests', () => {
-  const cliPath = join(process.cwd(), 'bin/exec-in-sandbox');
+  const cliPath = join(process.cwd(), 'dist/cli/index.js');
   let wasmtimeInstalled: boolean;
 
   beforeAll(() => {
     wasmtimeInstalled = existsSync(getWasmtimeExecutable());
   });
 
-  describe('CLI basic functionality', () => {
-    it('should show version command', () => {
-      try {
-        const output = execSync(`node "${cliPath}" version`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        expect(output).toContain('@agentskillmania/sandbox');
-        expect(output).toContain('0.1.0');
-        expect(output).toContain('Runtimes');
-      } catch (error: any) {
-        // If error, check if it's expected
-        if (!wasmtimeInstalled) {
-          console.log('Wasmtime not installed, version may show "not found"');
-          expect(error.stdout).toContain('Runtimes');
-        } else {
-          throw error;
-        }
-      }
+  const runCli = (args: string[]): { stdout: string; stderr: string; exitCode: number } => {
+    const result = spawnSync('node', [cliPath, ...args], {
+      encoding: 'utf-8',
     });
+    return {
+      stdout: result.stdout ?? '',
+      stderr: result.stderr ?? '',
+      exitCode: result.status ?? -1,
+    };
+  };
 
-    it('should show help for busybox command', () => {
-      const output = execSync(`node "${cliPath}" busybox --help`, {
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
-      expect(output).toContain('Execute Shell commands');
-    });
-
-    it('should show help for python command', () => {
-      const output = execSync(`node "${cliPath}" python --help`, {
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
-      expect(output).toContain('Execute Python code');
+  describe('version', () => {
+    it('should show version', () => {
+      const { stdout } = runCli(['version']);
+      expect(stdout).toContain('@agentskillmania/sandbox');
+      expect(stdout).toContain('0.2.0');
+      expect(stdout).toContain('Runtimes');
     });
   });
 
-  describe('CLI error handling', () => {
-    it('should show error for invalid command', () => {
-      try {
-        execSync(`node "${cliPath}" invalid-command`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-        // Should not reach here
-        expect(true).toBe(false);
-      } catch (error: any) {
-        expect(error.stderr).toContain('error') || error.stderr?.toContain('unknown');
-      }
+  describe('busybox execution', () => {
+    it('should pass -la to busybox ls', () => {
+      const { stdout, stderr } = runCli(['--sandbox-dir=.', '--', 'busybox', 'ls', '-la']);
+      const combined = stdout + stderr;
+      expect(combined).toContain('total');
     });
 
-    it('should handle timeout option', () => {
-      // Test that timeout option is accepted (format validation)
-      try {
-        execSync(`node "${cliPath}" busybox --timeout=1000 echo test`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-          timeout: 5000,
-        });
-      } catch (error: any) {
-        // May fail if WASM not found, but the option should be parsed
-        // Error message should NOT be about unknown option
-        expect(error.message).not.toContain('unknown option');
-        expect(error.message).not.toContain('unexpected option');
-      }
+    it('should pass --list to busybox', () => {
+      const { stderr } = runCli(['--', 'busybox', '--list']);
+      expect(stderr).toContain('ls');
+      expect(stderr).toContain('cat');
+    });
+
+    it('should pass -n to echo', () => {
+      const { stdout } = runCli(['--', 'busybox', 'echo', '-n', 'hello']);
+      expect(stdout.trim()).toBe('hello');
+    });
+  });
+
+  describe('wsh execution', () => {
+    it('should execute wsh -c echo hello', () => {
+      const { stdout } = runCli(['--', 'wsh', '-c', 'echo hello']);
+      expect(stdout.trim()).toBe('hello');
+    });
+
+    it('should execute arithmetic expression', () => {
+      const { stdout } = runCli(['--', 'wsh', '-c', 'X=10; Y=20; echo $((X + Y))']);
+      expect(stdout.trim()).toBe('30');
+    });
+
+    it('should handle comments in wsh script', () => {
+      const { stdout } = runCli(['--', 'wsh', '-c', '# comment\nX=5\necho $X']);
+      expect(stdout.trim()).toBe('5');
+    });
+  });
+
+  describe('micropython execution', () => {
+    it('should execute python -c print', () => {
+      const { stdout } = runCli(['--', 'micropython', '-c', 'print(42)']);
+      expect(stdout.trim()).toBe('42');
     });
   });
 
   describe('CLI options', () => {
+    it('should accept timeout option', () => {
+      const { stdout } = runCli(['--timeout=1000', '--', 'busybox', 'echo', 'test']);
+      expect(stdout.trim()).toBe('test');
+    });
+
     it('should accept sandbox-dir option', () => {
-      try {
-        execSync(`node "${cliPath}" --sandbox-dir=.test-sandbox busybox echo test`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-      } catch (error: any) {
-        // May fail if WASM not found, but the option should be parsed
-        expect(error.message).not.toContain('unknown option');
-        expect(error.message).not.toContain('unexpected option');
-      }
-    });
-
-    it('should accept allow-network option', () => {
-      try {
-        execSync(`node "${cliPath}" --allow-network busybox echo test`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-      } catch (error: any) {
-        expect(error.message).not.toContain('unknown option');
-        expect(error.message).not.toContain('unexpected option');
-      }
-    });
-
-    it('should accept command-allowlist option', () => {
-      try {
-        execSync(`node "${cliPath}" --command-allowlist=ls,cat busybox ls`, {
-          encoding: 'utf-8',
-          stdio: 'pipe',
-        });
-      } catch (error: any) {
-        expect(error.message).not.toContain('unknown option');
-        expect(error.message).not.toContain('unexpected option');
-      }
+      const { stdout } = runCli(['--sandbox-dir=.', '--', 'busybox', 'echo', 'test']);
+      expect(stdout.trim()).toBe('test');
     });
   });
 
-  describe('install-runtime command', () => {
-    it('should have install-runtime command available', () => {
-      const output = execSync(`node "${cliPath}" install-runtime --help 2>&1 || true`, {
-        encoding: 'utf-8',
-        stdio: 'pipe',
-      });
-      // Command should exist (may show help or execute)
-      expect(output).toBeTruthy();
+  describe('error handling', () => {
+    it('should error when no runtime is given', () => {
+      const { stderr, exitCode } = runCli([]);
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain('No runtime specified');
+    });
+
+    it('should error for unknown runtime', () => {
+      const { stderr, exitCode } = runCli(['--', 'unknown-runtime']);
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain('Unknown runtime');
     });
   });
 });

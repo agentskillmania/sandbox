@@ -45,10 +45,7 @@ describe('run_script tool', () => {
     });
 
     expect(writeFile).toHaveBeenCalled();
-    expect(mockSandbox.runShell).toHaveBeenCalledWith(
-      expect.stringContaining('temp_script'),
-      []
-    );
+    expect(mockSandbox.runShell).toHaveBeenCalledWith(expect.stringContaining('temp_script'), []);
     expect(result.content[0].text).toContain('✅');
     expect(result.content[0].text).toContain('hello world');
   });

@@ -1,6 +1,6 @@
 # @agentskillmania/sandbox
 
-WASM 沙箱工具，支持 busybox 和 micropython。
+WASM 沙箱工具，支持 busybox、wsh shell 和 micropython。
 
 ## 特性
 
@@ -54,50 +54,64 @@ exec-in-sandbox install-runtime
 
 ## 使用
 
-### CLI 工具
+### CLI 语法
 
 ```bash
-# 执行 Shell 命令（通过 busybox.wasm）
-exec-in-sandbox busybox ls -la
-exec-in-sandbox busybox -c "echo hello | grep h"
-
-# 列出所有可用的 busybox 命令（内置功能）
-exec-in-sandbox busybox --list
-exec-in-sandbox busybox --list-full
-
-# 显示 busybox 帮助（内置功能）
-exec-in-sandbox busybox
-
-# 执行 Python 代码（通过 micropython.wasm）
-exec-in-sandbox python -c "print('hello from python')"
-exec-in-sandbox python -c "import os; print(os.listdir('.'))"
-
-# 执行脚本文件
-exec-in-sandbox busybox script.sh
-exec-in-sandbox python script.py
-
-# 使用共享文件系统
-exec-in-sandbox busybox -c "echo 'print(42)' > .sandbox/script.py"
-exec-in-sandbox python .sandbox/script.py
-
-# 命令行选项
-exec-in-sandbox --timeout 10000 --allow-network busybox curl https://example.com
-exec-in-sandbox --command-allowlist "ls,cat,echo" busybox ls -la
-exec-in-sandbox --network-allowlist "*.github.com,registry.npmjs.org" python -c "import urllib; ..."
+exec-in-sandbox [选项] -- <运行时> [参数...]
 ```
 
-**全局选项：**
+`--` 分隔符是必需的。`--` 之前是 CLI 选项，`--` 之后传给 WASM 运行时。
 
-| 命令行参数                      | 配置文件                 | 说明                                                           |
-| ------------------------------- | ------------------------ | -------------------------------------------------------------- |
-| `--config <path>`               | —                        | 配置文件路径                                                   |
-| `--sandbox-dir <dir>`           | —                        | 沙箱目录（默认：`auto` = 系统临时目录，如 `/tmp/sandbox-xxx`） |
-| `--timeout <ms>`                | —                        | 执行超时时间（毫秒，默认：`5000`）                             |
-| `--allow-network`               | `network.mode`           | 允许网络访问                                                   |
-| `--command-allowlist <cmds>`    | `commands.mode` + `list` | 命令白名单（逗号分隔）                                         |
-| `--command-blocklist <cmds>`    | `commands.mode` + `list` | 命令黑名单（逗号分隔）                                         |
-| `--network-allowlist <domains>` | `network.mode` + `list`  | 网络白名单（逗号分隔）                                         |
-| `--network-blocklist <domains>` | `network.mode` + `list`  | 网络黑名单（逗号分隔）                                         |
+**支持的运行时**：
+
+| 运行时        | 别名           | 说明                                     |
+| ------------- | -------------- | ---------------------------------------- |
+| `busybox`     | `bb`           | Busybox 小程序（ls、cat、echo、wget 等） |
+| `wsh`         | `sh`           | WSH shell 解释器（脚本、管道、变量）     |
+| `micropython` | `python`、`py` | MicroPython 解释器                       |
+
+### CLI 示例
+
+```bash
+# 执行 busybox 命令
+exec-in-sandbox -- busybox ls -la
+exec-in-sandbox -- busybox cat file.txt
+exec-in-sandbox -- busybox --list
+
+# 执行 wsh shell 脚本
+exec-in-sandbox -- wsh -c "echo hello | grep h"
+exec-in-sandbox -- wsh -c "X=10; Y=20; echo \$((X + Y))"
+exec-in-sandbox -- wsh -c $'echo hello\necho world'
+
+# 执行 Python 代码
+exec-in-sandbox -- micropython -c "print('hello from python')"
+exec-in-sandbox -- micropython -c "import os; print(os.listdir('.'))"
+
+# 执行脚本文件
+exec-in-sandbox -- busybox script.sh
+exec-in-sandbox -- micropython script.py
+
+# 使用共享文件系统
+exec-in-sandbox -- busybox -c "echo 'print(42)' > .sandbox/script.py"
+exec-in-sandbox -- micropython .sandbox/script.py
+
+# 命令行选项（在 -- 之前）
+exec-in-sandbox --timeout=10000 --allow-network -- busybox curl https://example.com
+exec-in-sandbox --command-allowlist "ls,cat,echo" -- busybox ls -la
+exec-in-sandbox --sandbox-dir=./my-sandbox -- busybox ls -la
+```
+
+**全局选项**：
+
+| 命令行参数                      | 说明                                           |
+| ------------------------------- | ---------------------------------------------- |
+| `--timeout <ms>`                | 执行超时时间（毫秒，默认：`5000`）             |
+| `--sandbox-dir <dir>`           | 沙箱目录（默认：`auto` = 系统临时目录）        |
+| `--allow-network`               | 允许网络访问                                   |
+| `--command-allowlist <cmds>`    | 命令白名单（逗号分隔，设置模式为 `whitelist`） |
+| `--command-blocklist <cmds>`    | 命令黑名单（逗号分隔，设置模式为 `blacklist`） |
+| `--network-allowlist <domains>` | 网络白名单（逗号分隔）                         |
+| `--network-blocklist <domains>` | 网络黑名单（逗号分隔）                         |
 
 **配置优先级：** 命令行参数 > 配置文件 > 默认值
 
@@ -152,7 +166,7 @@ network:
     - '*.ads.com'
 ```
 
-**模式语义：**
+**模式语义**：
 
 - **黑名单模式**：禁止列表中的项目，允许其他所有项目
   - 命令：禁止危险命令如 `rm`、`format`
@@ -161,7 +175,7 @@ network:
   - 命令：只允许特定命令如 `ls`、`cat`
   - 网络：只允许特定域名如 `*.github.com`
 
-**网络行为：**
+**网络行为**：
 
 - 无配置或 `mode: blacklist` 且列表为空 → 禁用网络
 - `mode: whitelist` → 启用网络 + 只允许列表中的域名
@@ -172,13 +186,13 @@ network:
 - 命令行参数：`--timeout 10000`
 - SDK 构造函数：`new Sandbox({ timeout: 10000 })`
 
-**配置优先级：**
+**配置优先级**：
 
 1. 命令行参数（最高优先级）
 2. SDK 构造函数参数
 3. 全局安全策略（默认值）
 
-**安全策略映射：**
+**安全策略映射**：
 
 | 安全功能 | 全局配置                 | CLI 覆盖                        | SDK 构造函数                 |
 | -------- | ------------------------ | ------------------------------- | ---------------------------- |
@@ -193,43 +207,32 @@ network:
 │                     @agentskillmania/sandbox (Node.js)       │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │              命令路由器                             │  │
-│  │  - 识别命令类型（Shell vs Python）                  │  │
-│  │  - 路由到对应的 WASM 模块                           │  │
+│  │              执行器 (Executor)                      │  │
+│  │  - 验证安全策略                                     │  │
+│  │  - 分发到运行时 (busybox / wsh / micropython)       │  │
 │  └─────────────────────────────────────────────────────┘  │
 │                          ↓                                │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │            共享沙箱目录                             │  │
-│  │  .sandbox/                                          │  │
-│  │    ├── tmp/          (临时文件)                     │  │
-│  │    ├── data/         (数据文件)                     │  │
-│  │    └── scripts/      (脚本文件)                     │  │
+│  │            WasmRuntime (wasmtime)                   │  │
+│  │  - 启动 wasmtime 进程                               │  │
+│  │  - 映射沙箱目录                                     │  │
 │  └─────────────────────────────────────────────────────┘  │
-│         ↓                           ↓                    │
-│  ┌──────────────┐          ┌─────────────┐             │
-│  │ busybox.wasm │          │ micropython │             │
-│  │              │          │   .wasm     │             │
-│  │ Shell 命令   │          │ Python 代码 │             │
-│  └──────────────┘          └─────────────┘             │
+│                          ↓                                │
+│  ┌──────────────┐  ┌──────────┐  ┌─────────────┐        │
+│  │ busybox.wasm │  │ wsh      │  │ micropython │        │
+│  │ (小程序)     │  │ (shell)  │  │ (python)    │        │
+│  └──────────────┘  └──────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-1. **命令路由**：根据命令类型自动选择 WASM 模块
-   - Shell 命令 → `busybox.wasm`
-   - Python 代码/脚本 → `micropython.wasm`
-
-2. **共享文件系统**：
-   - 创建 `.sandbox/` 目录
-   - 通过 `--dir=.sandbox` 参数映射到 WASM 沙箱
-   - 两个模块都可以读写这个目录
-
-3. **进程隔离**：
-   - 每次执行都是独立的 wasmtime 进程
-   - 执行完成后进程退出，资源自动释放
+1. **显式运行时选择**：用户指定使用哪个运行时（`busybox`、`wsh` 或 `micropython`）
+2. **安全验证**：执行前强制执行命令和网络策略
+3. **共享文件系统**：沙箱目录通过 `--dir` 映射到 WASM 进程
+4. **进程隔离**：每次执行都是独立的 wasmtime 进程，执行完成后退出
 
 ## Shell 脚本支持 (wsh)
 
-Shell 脚本（`.sh` 文件）通过 **wsh** 执行，这是来自 busybox-wasi 的自定义 WASM shell 实现。
+Shell 脚本（`.sh` 文件）和内联 shell 代码通过 **wsh** 执行，这是来自 busybox-wasi 的自定义 WASM shell 实现。
 
 ### 支持的功能
 
@@ -246,33 +249,36 @@ Shell 脚本（`.sh` 文件）通过 **wsh** 执行，这是来自 busybox-wasi 
 
 这些是 **wsh 实现限制**，不是 sandbox 的 bug：
 
-- ❌ **不支持 `#` 注释** — wsh 不支持 shell 风格的注释
 - ❌ **不支持函数定义** — `()` 语法不支持
-- ❌ **不支持 `$((...))` 算术** — 请使用 `expr $X + $Y` 替代
-- ❌ **多行脚本** — 命令必须用 `;` 分隔，不能用换行符
 
 ### 脚本格式
 
-由于 wsh 的限制，Shell 脚本应该：
-
 ```bash
-# ✅ 正确：无 shebang，使用分号，无注释
-echo "Hello"; echo "World"
-X=10; Y=20; result=$(expr $X + $Y); echo $result
-if [ "$X" -gt 5 ]; then echo "X is large"; fi
+# ✅ 正确：格式良好的 wsh 脚本
+echo "Hello"
+echo "World"
+
+# 注释已支持
+X=10
+Y=20
+result=$((X + Y))
+echo $result
+
+if [ "$X" -gt 5 ]; then
+    echo "X is large"
+fi
 
 # ❌ 错误：使用了不支持的功能
 #!/bin/sh
-# 这是注释 - 会失败！
-X=$((10 + 20))  # 算术展开 - 会失败！
+myfunc() { echo "not supported"; }
 ```
 
-**提示：**
+**提示**：
 
-- 保持脚本单行或用分号分隔
-- 使用 `expr` 进行算术运算：`result=$(expr 10 + 20)`
+- 使用 `$((...))` 进行算术运算
+- `#` 注释完全支持
+- 换行可以分隔命令（不需要到处用 `;`）
 - 避免函数定义 — 使用内联命令
-- 不需要 `#` 注释
 
 ## 性能
 

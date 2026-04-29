@@ -261,9 +261,7 @@ describe('Sandbox', () => {
 
     it('should preserve newlines and comments in shell scripts', async () => {
       const { readFileSync } = await import('node:fs');
-      vi.mocked(readFileSync).mockReturnValue(
-        '# This is a comment\nX=10\nY=20\necho $((X + Y))'
-      );
+      vi.mocked(readFileSync).mockReturnValue('# This is a comment\nX=10\nY=20\necho $((X + Y))');
 
       await sandbox.runShell('busybox', ['test.sh']);
 

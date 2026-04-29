@@ -1,6 +1,6 @@
 # @agentskillmania/sandbox
 
-WASM sandbox tool supporting busybox and micropython.
+WASM sandbox tool supporting busybox, wsh shell, and micropython.
 
 ## Features
 
@@ -54,50 +54,64 @@ The installation script automatically uses `curl` for downloads (if available), 
 
 ## Usage
 
-### CLI Tool
+### CLI Syntax
 
 ```bash
-# Execute Shell commands (via busybox.wasm)
-exec-in-sandbox busybox ls -la
-exec-in-sandbox busybox -c "echo hello | grep h"
+exec-in-sandbox [OPTIONS] -- <runtime> [argv...]
+```
 
-# List all available busybox commands (built-in)
-exec-in-sandbox busybox --list
-exec-in-sandbox busybox --list-full
+The `--` separator is required. Everything before `--` are CLI options; everything after `--` is passed to the WASM runtime.
 
-# Show busybox help (built-in)
-exec-in-sandbox busybox
+**Supported runtimes:**
 
-# Execute Python code (via micropython.wasm)
-exec-in-sandbox python -c "print('hello from python')"
-exec-in-sandbox python -c "import os; print(os.listdir('.'))"
+| Runtime       | Aliases        | Description                                       |
+| ------------- | -------------- | ------------------------------------------------- |
+| `busybox`     | `bb`           | Busybox applets (ls, cat, echo, wget, etc.)       |
+| `wsh`         | `sh`           | WSH shell interpreter (scripts, pipes, variables) |
+| `micropython` | `python`, `py` | MicroPython interpreter                           |
+
+### CLI Examples
+
+```bash
+# Execute busybox commands
+exec-in-sandbox -- busybox ls -la
+exec-in-sandbox -- busybox cat file.txt
+exec-in-sandbox -- busybox --list
+
+# Execute wsh shell scripts
+exec-in-sandbox -- wsh -c "echo hello | grep h"
+exec-in-sandbox -- wsh -c "X=10; Y=20; echo \$((X + Y))"
+exec-in-sandbox -- wsh -c $'echo hello\necho world'
+
+# Execute Python code
+exec-in-sandbox -- micropython -c "print('hello from python')"
+exec-in-sandbox -- micropython -c "import os; print(os.listdir('.'))"
 
 # Execute script files
-exec-in-sandbox busybox script.sh
-exec-in-sandbox python script.py
+exec-in-sandbox -- busybox script.sh
+exec-in-sandbox -- micropython script.py
 
 # Use shared filesystem
-exec-in-sandbox busybox -c "echo 'print(42)' > .sandbox/script.py"
-exec-in-sandbox python .sandbox/script.py
+exec-in-sandbox -- busybox -c "echo 'print(42)' > .sandbox/script.py"
+exec-in-sandbox -- micropython .sandbox/script.py
 
-# Command-line options
-exec-in-sandbox --timeout 10000 --allow-network busybox curl https://example.com
-exec-in-sandbox --command-allowlist "ls,cat,echo" busybox ls -la
-exec-in-sandbox --network-allowlist "*.github.com,registry.npmjs.org" python -c "import urllib; ..."
+# Command-line options (before --)
+exec-in-sandbox --timeout=10000 --allow-network -- busybox curl https://example.com
+exec-in-sandbox --command-allowlist "ls,cat,echo" -- busybox ls -la
+exec-in-sandbox --sandbox-dir=./my-sandbox -- busybox ls -la
 ```
 
 **Global Options:**
 
-| CLI Option                      | Config File Path                | Description                                                                   |
-| ------------------------------- | ------------------------------- | ----------------------------------------------------------------------------- |
-| `--config <path>`               | —                               | Configuration file path                                                       |
-| `--sandbox-dir <dir>`           | `sandboxDir`                    | Sandbox directory (default: `auto` = system temp dir like `/tmp/sandbox-xxx`) |
-| `--timeout <ms>`                | `security.timeout`              | Execution timeout in milliseconds (default: `5000`)                           |
-| `--allow-network`               | `network.enabled`               | Allow network access                                                          |
-| `--command-allowlist <cmds>`    | `modules.busybox.commands.list` | Command allowlist (comma-separated, sets mode to `whitelist`)                 |
-| `--command-blocklist <cmds>`    | `modules.busybox.commands.list` | Command blocklist (comma-separated, sets mode to `blacklist`)                 |
-| `--network-allowlist <domains>` | `network.allowlist`             | Network allowlist (comma-separated)                                           |
-| `--network-blocklist <domains>` | `network.blocklist`             | Network blocklist (comma-separated)                                           |
+| CLI Option                      | Description                                                   |
+| ------------------------------- | ------------------------------------------------------------- |
+| `--timeout <ms>`                | Execution timeout in milliseconds (default: `5000`)           |
+| `--sandbox-dir <dir>`           | Sandbox directory (default: `auto` = system temp dir)         |
+| `--allow-network`               | Allow network access                                          |
+| `--command-allowlist <cmds>`    | Command allowlist (comma-separated, sets mode to `whitelist`) |
+| `--command-blocklist <cmds>`    | Command blocklist (comma-separated, sets mode to `blacklist`) |
+| `--network-allowlist <domains>` | Network allowlist (comma-separated)                           |
+| `--network-blocklist <domains>` | Network blocklist (comma-separated)                           |
 
 **Configuration Priority:** Command-line arguments > Config file > Default values
 
@@ -130,8 +144,6 @@ const result3 = await sandbox.runPython(`
 console.log(result3.stdout);
 ```
 
-````
-
 ### Configuration
 
 The global configuration file at `~/.agentskillmania/sandbox/config.yaml` contains **security policies only**. It provides default values for command and network security:
@@ -139,8 +151,8 @@ The global configuration file at `~/.agentskillmania/sandbox/config.yaml` contai
 ```yaml
 # Command security policy
 commands:
-  mode: blacklist        # blacklist = block these, whitelist = only allow these
-  list:                  # Commands to apply the mode
+  mode: blacklist # blacklist = block these, whitelist = only allow these
+  list: # Commands to apply the mode
     - rm
     - format
     - fdisk
@@ -148,11 +160,11 @@ commands:
 
 # Network security policy
 network:
-  mode: blacklist        # blacklist = block these domains, whitelist = only allow these
-  list:                  # Domains to apply the mode
+  mode: blacklist # blacklist = block these domains, whitelist = only allow these
+  list: # Domains to apply the mode
     - '*.malicious.com'
     - '*.ads.com'
-````
+```
 
 **Mode semantics:**
 
@@ -175,7 +187,6 @@ network:
 - SDK constructor: `new Sandbox({ timeout: 10000 })`
 
 **Configuration Priority:**
-**Configuration Priority:**
 
 1. Command-line arguments (highest priority)
 2. SDK constructor parameters
@@ -196,45 +207,34 @@ network:
 │                     @agentskillmania/sandbox (Node.js)       │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │              Command Router                          │  │
-│  │  - Identify command type (Shell vs Python)          │  │
-│  │  - Route to corresponding WASM module              │  │
+│  │              Executor                                │  │
+│  │  - Validate security policy                         │  │
+│  │  - Dispatch to runtime (busybox / wsh / micropython)│  │
 │  └─────────────────────────────────────────────────────┘  │
 │                          ↓                                │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │            Shared Sandbox Directory                 │  │
-│  │  .sandbox/                                          │  │
-│  │    ├── tmp/          (temporary files)              │  │
-│  │    ├── data/         (data files)                   │  │
-│  │    └── scripts/      (script files)                 │  │
+│  │            WasmRuntime (wasmtime)                   │  │
+│  │  - Spawn wasmtime process                           │  │
+│  │  - Map sandbox directory                            │  │
 │  └─────────────────────────────────────────────────────┘  │
-│         ↓                           ↓                    │
-│  ┌──────────────┐          ┌─────────────┐             │
-│  │ busybox.wasm │          │ micropython │             │
-│  │              │          │   .wasm     │             │
-│  │ Shell cmd    │          │ Python code │             │
-│  └──────────────┘          └─────────────┘             │
+│                          ↓                                │
+│  ┌──────────────┐  ┌──────────┐  ┌─────────────┐        │
+│  │ busybox.wasm │  │ wsh      │  │ micropython │        │
+│  │ (applets)    │  │ (shell)  │  │ (python)    │        │
+│  └──────────────┘  └──────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ## How It Works
 
-1. **Command Routing**: Automatically selects WASM module based on command type
-   - Shell commands → `busybox.wasm`
-   - Python code/scripts → `micropython.wasm`
-
-2. **Shared Filesystem**:
-   - Creates `.sandbox/` directory
-   - Maps to WASM sandbox via `--dir=.sandbox` parameter
-   - Both modules can read/write this directory
-
-3. **Process Isolation**:
-   - Each execution is a separate wasmtime process
-   - Process exits after execution, resources automatically released
+1. **Explicit Runtime Selection**: User specifies which runtime to use (`busybox`, `wsh`, or `micropython`)
+2. **Security Validation**: Command and network policies are enforced before execution
+3. **Shared Filesystem**: Sandbox directory is mapped into the WASM process via `--dir`
+4. **Process Isolation**: Each execution is a separate wasmtime process that exits after completion
 
 ## Shell Script Support (wsh)
 
-Shell scripts (`.sh` files) are executed via **wsh**, a custom WASM shell implementation from busybox-wasi.
+Shell scripts (`.sh` files) and inline shell code are executed via **wsh**, a custom WASM shell implementation from busybox-wasi.
 
 ### Supported Features
 
@@ -277,7 +277,7 @@ myfunc() { echo "not supported"; }
 
 **Tips:**
 
-- Use `$((...))` for arithmetic: `result=$((10 + 20))`
+- Use `$((...))` for arithmetic
 - Comments with `#` are fully supported
 - Newlines can separate commands (no need for `;` everywhere)
 - Avoid function definitions — inline commands instead

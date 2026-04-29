@@ -120,9 +120,9 @@ describe('Script Execution Integration Tests', () => {
   });
 
   describe('Shebang parsing', () => {
-    // NOTE: Shell shebang tests are skipped due to wsh implementation issue
+    // Shell shebang tests
 
-    it.skip('should handle standard sh shebang', async () => {
+    it('should handle standard sh shebang', async () => {
       if (!busyboxExists) {
         console.log('busybox.wasm not found, skipping test');
         return;
@@ -138,7 +138,7 @@ describe('Script Execution Integration Tests', () => {
       expect(result.stdout).toContain('Standard sh shebang');
     }, 10000);
 
-    it.skip('should handle bash shebang', async () => {
+    it('should handle bash shebang', async () => {
       if (!busyboxExists) {
         console.log('busybox.wasm not found, skipping test');
         return;
