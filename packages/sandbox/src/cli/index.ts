@@ -15,6 +15,7 @@ const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
 
 const program = new Command();
+program.enablePositionalOptions();
 
 program
   .name('exec-in-sandbox')
@@ -38,6 +39,8 @@ program
   .description('Execute Shell commands via busybox.wasm')
   .argument('[command...]', 'Command or script (e.g., "ls -la", "--list")')
   .option('-c, --code <command>', 'Execute command string')
+  .passThroughOptions()
+  .allowUnknownOption()
   .action(async (command, options) => {
     try {
       // Initialize security configuration
@@ -58,8 +61,8 @@ program
       let result;
 
       if (options.code) {
-        // -c mode: execute command string
-        result = await sandbox.runShell(options.code, []);
+        // -c mode: execute command string via wsh -c
+        result = await sandbox.runShell('wsh', ['-c', options.code]);
       } else if (command && command.length > 0) {
         // Execute with command and args
         const cmd = command[0];
