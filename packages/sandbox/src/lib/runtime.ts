@@ -43,9 +43,25 @@ export function checkInstalledWasmtime(): {
  * These are relative to the current working directory
  */
 export function getWasmPaths() {
+  const candidates = [
+    join(__dirname, '..', 'wasm'), // bundled: dist/../wasm
+    join(__dirname, '..', '..', 'wasm'), // source: src/lib/../../wasm
+  ];
+
+  for (const dir of candidates) {
+    const busybox = join(dir, 'busybox.wasm');
+    if (existsSync(busybox)) {
+      return {
+        busybox,
+        micropython: join(dir, 'micropython.wasm'),
+      };
+    }
+  }
+
+  // fallback to first candidate
   return {
-    busybox: join(__dirname, '..', '..', 'wasm', 'busybox.wasm'),
-    micropython: join(__dirname, '..', '..', 'wasm', 'micropython.wasm'),
+    busybox: join(candidates[0], 'busybox.wasm'),
+    micropython: join(candidates[0], 'micropython.wasm'),
   };
 }
 
@@ -109,7 +125,19 @@ export function checkRuntimeReady(): { ready: boolean } {
  */
 async function installRuntime(): Promise<boolean> {
   try {
-    const installScript = join(__dirname, '..', '..', 'scripts', 'install-runtime.cjs');
+    const candidates = [
+      join(__dirname, '..', 'scripts', 'install-runtime.cjs'), // bundled
+      join(__dirname, '..', '..', 'scripts', 'install-runtime.cjs'), // source
+    ];
+
+    let installScript = candidates[0];
+    for (const path of candidates) {
+      if (existsSync(path)) {
+        installScript = path;
+        break;
+      }
+    }
+
     execSync(`node "${installScript}"`, {
       stdio: 'inherit',
       cwd: process.cwd(),

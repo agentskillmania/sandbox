@@ -71,6 +71,7 @@ describe('runtime', () => {
 
   describe('getWasmPaths', () => {
     it('should return correct WASM paths', () => {
+      vi.mocked(existsSync).mockReturnValue(true);
       const paths = getWasmPaths();
       expect(paths.busybox).toMatch(/wasm[/\\]busybox\.wasm$/);
       expect(paths.micropython).toMatch(/wasm[/\\]micropython\.wasm$/);
