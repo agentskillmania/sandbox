@@ -7,6 +7,7 @@ WASM sandbox tool supporting busybox, shell scripts, and python.
 - 🚀 **Lightweight**: Single wasmtime process ~3MB vs Docker's ~1GB
 - ⚡ **Fast Execution**: ~12ms average command time vs Docker's ~100ms
 - 🔒 **Secure Isolation**: WASM sandbox with controlled filesystem access
+- 🔐 **HTTPS/SSL Support**: Python `ssl` module with mbedTLS for secure connections
 - 🛠️ **Easy to Use**: CLI tool and Node.js SDK
 
 ## Installation
