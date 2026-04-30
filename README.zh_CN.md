@@ -65,8 +65,8 @@ console.log(pyResult.stdout);
 {
   "mcpServers": {
     "sandbox": {
-      "command": "node",
-      "args": ["./packages/sandbox-mcp/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "@agentskillmania/sandbox-mcp"]
     }
   }
 }

@@ -65,8 +65,8 @@ Add to Claude Desktop config (`~/Library/Application Support/Claude/claude_deskt
 {
   "mcpServers": {
     "sandbox": {
-      "command": "node",
-      "args": ["./packages/sandbox-mcp/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "@agentskillmania/sandbox-mcp"]
     }
   }
 }
