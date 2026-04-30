@@ -148,7 +148,7 @@ describe('Network Integration Tests', () => {
   });
 
   describe('Python network capabilities', () => {
-    it('should support socket module in micropython', async () => {
+    it('should support socket module in python', async () => {
       const sandbox = new Sandbox({
         sandboxDir: '.sandbox-test-network',
         allowNetwork: true,

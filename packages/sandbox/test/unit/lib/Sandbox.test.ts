@@ -278,7 +278,7 @@ describe('Sandbox', () => {
       vi.mocked(readFileSync).mockRestore();
     });
 
-    it('should not treat wsh substring as wsh command', async () => {
+    it('should not treat sh substring as sh command', async () => {
       // Mock stderr output
       mockSpawn.mockReturnValue({
         stdout: { on: vi.fn() },

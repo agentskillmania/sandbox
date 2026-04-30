@@ -6,8 +6,8 @@
  *
  * Examples:
  *   exec-in-sandbox --timeout 5000 -- busybox ls -la
- *   exec-in-sandbox --sandbox-dir=. -- wsh -c "echo hello"
- *   exec-in-sandbox -- micropython -c "print(42)"
+ *   exec-in-sandbox --sandbox-dir=. -- sh -c "echo hello"
+ *   exec-in-sandbox -- python -c "print(42)"
  *   exec-in-sandbox -- busybox --list
  */
 
@@ -46,8 +46,8 @@ program.action(async (args, options) => {
       console.error(chalk.red('Error: No runtime specified'));
       console.error('Usage: exec-in-sandbox [options] -- <runtime> [args...]');
       console.error('  exec-in-sandbox -- busybox ls -la');
-      console.error('  exec-in-sandbox -- wsh -c "echo hello"');
-      console.error('  exec-in-sandbox -- micropython -c "print(42)"');
+      console.error('  exec-in-sandbox -- sh -c "echo hello"');
+      console.error('  exec-in-sandbox -- python -c "print(42)"');
       process.exit(1);
     }
 
@@ -57,11 +57,11 @@ program.action(async (args, options) => {
     const runtimeMap: Record<string, ExecutionRequest['runtime']> = {
       busybox: 'busybox',
       bb: 'busybox',
-      wsh: 'wsh',
-      sh: 'wsh',
-      micropython: 'micropython',
-      py: 'micropython',
-      python: 'micropython',
+      sh: 'sh',
+      wsh: 'sh',
+      python: 'python',
+      py: 'python',
+      micropython: 'python',
     };
 
     const runtime = runtimeMap[runtimeName];
@@ -91,8 +91,8 @@ program.action(async (args, options) => {
       commandPolicy,
     });
 
-    // micropython.wasm does not support -c; it takes code directly
-    const normalizedArgv = runtime === 'micropython' && argv[0] === '-c' ? argv.slice(1) : argv;
+    // python (micropython) does not support -c; it takes code directly
+    const normalizedArgv = runtime === 'python' && argv[0] === '-c' ? argv.slice(1) : argv;
 
     const result = await executor.exec({ runtime, argv: normalizedArgv });
 
@@ -121,7 +121,7 @@ program
     console.log(chalk.bold('Runtimes:'));
     console.log(`  wasmtime: ${formatVersion(versions.wasmtime)}`);
     console.log(`  busybox.wasm: ${formatVersion(versions.busybox)}`);
-    console.log(`  micropython.wasm: ${formatVersion(versions.micropython)}`);
+    console.log(`  python.wasm (micropython): ${formatVersion(versions.micropython)}`);
   });
 
 // install-runtime command

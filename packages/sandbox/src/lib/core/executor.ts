@@ -22,7 +22,7 @@ export class Executor {
   private security: SecurityPolicy;
   private sandboxDir: SandboxDirectory;
   private busybox: BusyboxRuntime;
-  private wsh: WshRuntime;
+  private sh: WshRuntime;
   private python: PythonRuntime;
 
   constructor(config: ExecutorConfig) {
@@ -47,7 +47,7 @@ export class Executor {
     });
 
     this.busybox = new BusyboxRuntime(baseWasm, config.busyboxPath);
-    this.wsh = new WshRuntime(wshWasm, config.busyboxPath);
+    this.sh = new WshRuntime(wshWasm, config.busyboxPath);
     this.python = new PythonRuntime(baseWasm, config.micropythonPath);
   }
 
@@ -57,9 +57,9 @@ export class Executor {
     switch (request.runtime) {
       case 'busybox':
         return this.busybox.exec(request.argv);
-      case 'wsh':
-        return this.wsh.exec(request.argv);
-      case 'micropython':
+      case 'sh':
+        return this.sh.exec(request.argv);
+      case 'python':
         return this.python.exec(request.argv);
       default:
         throw new Error(`Unknown runtime: ${(request as any).runtime}`);

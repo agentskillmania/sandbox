@@ -46,7 +46,7 @@ describe('Executor', () => {
     expect(args[moduleIdx + 2]).toBe('-la');
   });
 
-  it('should route wsh request with wsh prefix', async () => {
+  it('should route sh request with wsh prefix', async () => {
     const executor = new Executor({
       wasmtimePath: '/mock/wasmtime',
       busyboxPath: '/mock/busybox.wasm',
@@ -56,7 +56,7 @@ describe('Executor', () => {
       allowNetwork: false,
     });
 
-    await executor.exec({ runtime: 'wsh', argv: ['-c', 'echo hello'] });
+    await executor.exec({ runtime: 'sh', argv: ['-c', 'echo hello'] });
 
     const args = mockSpawn.mock.calls[0][1];
     const moduleIdx = args.indexOf('/mock/busybox.wasm');
@@ -65,7 +65,7 @@ describe('Executor', () => {
     expect(args[moduleIdx + 3]).toBe('echo hello');
   });
 
-  it('should route micropython request', async () => {
+  it('should route python request', async () => {
     const executor = new Executor({
       wasmtimePath: '/mock/wasmtime',
       busyboxPath: '/mock/busybox.wasm',
@@ -75,14 +75,14 @@ describe('Executor', () => {
       allowNetwork: false,
     });
 
-    await executor.exec({ runtime: 'micropython', argv: ['print(42)'] });
+    await executor.exec({ runtime: 'python', argv: ['print(42)'] });
 
     const args = mockSpawn.mock.calls[0][1];
     const moduleIdx = args.indexOf('/mock/micropython.wasm');
     expect(args[moduleIdx + 1]).toBe('print(42)');
   });
 
-  it('should include /tmp dir for wsh', async () => {
+  it('should include /tmp dir for sh', async () => {
     const executor = new Executor({
       wasmtimePath: '/mock/wasmtime',
       busyboxPath: '/mock/busybox.wasm',
@@ -92,7 +92,7 @@ describe('Executor', () => {
       allowNetwork: false,
     });
 
-    await executor.exec({ runtime: 'wsh', argv: ['-c', 'echo hello'] });
+    await executor.exec({ runtime: 'sh', argv: ['-c', 'echo hello'] });
 
     const args = mockSpawn.mock.calls[0][1];
     expect(args).toContain('/tmp');

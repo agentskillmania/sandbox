@@ -1,6 +1,6 @@
 # @agentskillmania/sandbox
 
-WASM sandbox tool supporting busybox, wsh shell, and micropython.
+WASM sandbox tool supporting busybox, shell scripts, and python.
 
 ## Features
 
@@ -64,36 +64,33 @@ The `--` separator is required. Everything before `--` are CLI options; everythi
 
 **Supported runtimes:**
 
-| Runtime       | Aliases        | Description                                       |
-| ------------- | -------------- | ------------------------------------------------- |
-| `busybox`     | `bb`           | Busybox applets (ls, cat, echo, wget, etc.)       |
-| `wsh`         | `sh`           | WSH shell interpreter (scripts, pipes, variables) |
-| `micropython` | `python`, `py` | MicroPython interpreter                           |
+| Runtime   | Aliases | Description                                 |
+| --------- | ------- | ------------------------------------------- |
+| `busybox` | `bb`    | Single commands (ls, cat, echo, wget, etc.) |
+| `sh`      | `wsh`   | Shell scripts (pipes, variables, if/for)    |
+| `python`  | `py`    | Python interpreter                          |
 
 ### CLI Examples
 
 ```bash
-# Execute busybox commands
+# Execute single commands
 exec-in-sandbox -- busybox ls -la
 exec-in-sandbox -- busybox cat file.txt
-exec-in-sandbox -- busybox --list
+exec-in-sandbox -- busybox wget https://example.com
 
-# Execute wsh shell scripts
-exec-in-sandbox -- wsh -c "echo hello | grep h"
-exec-in-sandbox -- wsh -c "X=10; Y=20; echo \$((X + Y))"
-exec-in-sandbox -- wsh -c $'echo hello\necho world'
+# Execute shell scripts
+exec-in-sandbox -- sh -c "echo hello | grep h"
+exec-in-sandbox -- sh -c "X=10; Y=20; echo \$((X + Y))"
+exec-in-sandbox -- sh script.sh
 
 # Execute Python code
-exec-in-sandbox -- micropython -c "print('hello from python')"
-exec-in-sandbox -- micropython -c "import os; print(os.listdir('.'))"
-
-# Execute script files
-exec-in-sandbox -- busybox script.sh
-exec-in-sandbox -- micropython script.py
+exec-in-sandbox -- python -c "print('hello from python')"
+exec-in-sandbox -- python -c "import os; print(os.listdir('.'))"
+exec-in-sandbox -- python script.py
 
 # Use shared filesystem
 exec-in-sandbox -- busybox -c "echo 'print(42)' > .sandbox/script.py"
-exec-in-sandbox -- micropython .sandbox/script.py
+exec-in-sandbox -- python .sandbox/script.py
 
 # Command-line options (before --)
 exec-in-sandbox --timeout=10000 --allow-network -- busybox curl https://example.com
@@ -105,19 +102,19 @@ exec-in-sandbox --sandbox-dir=./my-sandbox -- busybox ls -la
 
 The bundled MicroPython interpreter supports the following features:
 
-| Module | Supported Features |
-| ------ | ------------------ |
-| `socket` | TCP client/server, **UDP** (v0.2.1+), `connect`, `bind`, `listen`, `accept`, `send`/`recv`, `sendto`/`recvfrom` |
-| `asyncio` | async/await, event loops, locks, streams |
-| `json` | `dumps`, `loads` |
-| `re` | `match`, `search`, `sub` |
-| `hashlib` | `sha256`, `md5` |
-| `deflate` | `DeflateIO` (compression) |
-| `math` | `pi`, `e`, `factorial`, `gamma`, `erf` |
-| `random` | `random()`, `randint()`, `choice()` |
-| `os` | `listdir`, `mkdir`, `remove`, `stat` |
-| `heapq` | `heappush`, `heappop`, `heapify` |
-| `collections` | `deque`, `OrderedDict` |
+| Module        | Supported Features                                                                                              |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
+| `socket`      | TCP client/server, **UDP** (v0.2.1+), `connect`, `bind`, `listen`, `accept`, `send`/`recv`, `sendto`/`recvfrom` |
+| `asyncio`     | async/await, event loops, locks, streams                                                                        |
+| `json`        | `dumps`, `loads`                                                                                                |
+| `re`          | `match`, `search`, `sub`                                                                                        |
+| `hashlib`     | `sha256`, `md5`                                                                                                 |
+| `deflate`     | `DeflateIO` (compression)                                                                                       |
+| `math`        | `pi`, `e`, `factorial`, `gamma`, `erf`                                                                          |
+| `random`      | `random()`, `randint()`, `choice()`                                                                             |
+| `os`          | `listdir`, `mkdir`, `remove`, `stat`                                                                            |
+| `heapq`       | `heappush`, `heappop`, `heapify`                                                                                |
+| `collections` | `deque`, `OrderedDict`                                                                                          |
 
 **Network capabilities:**
 
@@ -130,7 +127,7 @@ The bundled MicroPython interpreter supports the following features:
 
 ```bash
 # TCP client
-exec-in-sandbox --allow-network -- micropython -c "
+exec-in-sandbox --allow-network -- python -c "
 import socket
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect(('140.82.121.6', 80))
@@ -140,7 +137,7 @@ s.close()
 "
 
 # UDP socket
-exec-in-sandbox --allow-network -- micropython -c "
+exec-in-sandbox --allow-network -- python -c "
 import socket
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.sendto(b'hello', ('8.8.8.8', 53))
@@ -150,7 +147,7 @@ s.close()
 "
 
 # asyncio
-exec-in-sandbox -- micropython -c "
+exec-in-sandbox -- python -c "
 import asyncio
 async def main():
     print('hello async')
@@ -158,14 +155,15 @@ asyncio.run(main())
 "
 
 # JSON
-exec-in-sandbox -- micropython -c "
+exec-in-sandbox -- python -c "
 import json
 print(json.dumps({'name': 'sandbox', 'version': 1}))
 "
 ```
 
 **Global Options:**
-```
+
+````
 
 **Global Options:**
 
@@ -208,7 +206,7 @@ const result3 = await sandbox.runPython(`
   print(f'Got: {data}')
 `);
 console.log(result3.stdout);
-```
+````
 
 ### Configuration
 
@@ -275,7 +273,7 @@ network:
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │              Executor                                │  │
 │  │  - Validate security policy                         │  │
-│  │  - Dispatch to runtime (busybox / wsh / micropython)│  │
+│  │  - Dispatch to runtime (busybox / sh / python)│  │
 │  └─────────────────────────────────────────────────────┘  │
 │                          ↓                                │
 │  ┌─────────────────────────────────────────────────────┐  │
@@ -285,7 +283,7 @@ network:
 │  └─────────────────────────────────────────────────────┘  │
 │                          ↓                                │
 │  ┌──────────────┐  ┌──────────┐  ┌─────────────┐        │
-│  │ busybox.wasm │  │ wsh      │  │ micropython │        │
+│  │ busybox.wasm │  │ sh       │  │ python      │        │
 │  │ (applets)    │  │ (shell)  │  │ (python)    │        │
 │  └──────────────┘  └──────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
@@ -293,14 +291,14 @@ network:
 
 ## How It Works
 
-1. **Explicit Runtime Selection**: User specifies which runtime to use (`busybox`, `wsh`, or `micropython`)
+1. **Explicit Runtime Selection**: User specifies which runtime to use (`busybox`, `sh`, or `python`)
 2. **Security Validation**: Command and network policies are enforced before execution
 3. **Shared Filesystem**: Sandbox directory is mapped into the WASM process via `--dir`
 4. **Process Isolation**: Each execution is a separate wasmtime process that exits after completion
 
-## Shell Script Support (wsh)
+## Shell Script Support (sh)
 
-Shell scripts (`.sh` files) and inline shell code are executed via **wsh**, a custom WASM shell implementation from busybox-wasi.
+Shell scripts (`.sh` files) and inline shell code are executed via **sh** (wsh), a custom WASM shell implementation from busybox-wasi.
 
 ### Supported Features
 
@@ -315,14 +313,14 @@ Shell scripts (`.sh` files) and inline shell code are executed via **wsh**, a cu
 
 ### Known Limitations
 
-These are **wsh implementation limitations**, not sandbox bugs:
+These are **sh implementation limitations**, not sandbox bugs:
 
 - ❌ **No function definitions** — `()` syntax not supported
 
 ### Script Format
 
 ```bash
-# ✅ CORRECT: Well-formed wsh script
+# ✅ CORRECT: Well-formed sh script
 echo "Hello"
 echo "World"
 

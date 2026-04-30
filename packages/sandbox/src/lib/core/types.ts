@@ -22,7 +22,7 @@ export interface ExecResult {
  */
 export interface ExecutionRequest {
   /** Which runtime to use */
-  runtime: 'busybox' | 'wsh' | 'micropython';
+  runtime: 'busybox' | 'sh' | 'python';
   /** Arguments passed verbatim to the WASM module */
   argv: string[];
 }
@@ -58,7 +58,7 @@ export interface CommandPolicyConfig {
 /**
  * Runtime adapter interface.
  *
- * Each runtime (busybox, wsh, micropython) implements this interface.
+ * Each runtime (busybox, sh, python) implements this interface.
  */
 export interface Runtime {
   readonly name: string;

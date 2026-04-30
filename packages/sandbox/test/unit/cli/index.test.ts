@@ -72,7 +72,7 @@ describe('CLI: busybox command', () => {
 
 describe('CLI: python command', () => {
   it('should execute Python code', () => {
-    const output = execCli(['--', 'micropython', '-c', 'print(42)']);
+    const output = execCli(['--', 'python', '-c', 'print(42)']);
     expect(output).toContain('42');
   });
 
@@ -83,7 +83,7 @@ describe('CLI: python command', () => {
       console.log('test.py not found, skipping test');
       return;
     }
-    const output = execCli(['--', 'micropython', 'test.py']);
+    const output = execCli(['--', 'python', 'test.py']);
     expect(output).toContain('Hello from Python');
   });
 });
