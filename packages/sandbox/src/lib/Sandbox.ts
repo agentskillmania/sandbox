@@ -13,7 +13,7 @@ import { getWasmtimeExecutable, getWasmPaths, getRuntimeVersions } from './runti
  */
 const DEFAULT_CONFIG = {
   sandboxDir: 'auto' as string | 'auto',
-  timeout: 5000,
+  timeout: 600_000,
   allowNetwork: false,
   commandAllowlist: [] as string[],
   commandBlocklist: [] as string[],

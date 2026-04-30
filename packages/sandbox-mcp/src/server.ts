@@ -74,7 +74,7 @@ export function createMCPServer(userConfig?: MCPServerConfig) {
  */
 function loadConfigFromEnv(userConfig?: MCPServerConfig): MCPServerConfig {
   const config: MCPServerConfig = {
-    timeout: 5000,
+    timeout: 600_000,
     allowNetwork: false,
     sandboxDir: '.sandbox-mcp',
   };
