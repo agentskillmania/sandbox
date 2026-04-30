@@ -112,6 +112,8 @@ The bundled MicroPython interpreter supports the following features:
 | `deflate`     | `DeflateIO` (compression)                                                                                       |
 | `math`        | `pi`, `e`, `factorial`, `gamma`, `erf`                                                                          |
 | `random`      | `random()`, `randint()`, `choice()`                                                                             |
+| `time`        | `time()`, `time_ns()`, `gmtime()`, `localtime()`, `mktime()` (v0.2.3+)                                          |
+| `sys`         | `exc_info()`, `atexit()` (v0.2.3+)                                                                              |
 | `os`          | `listdir`, `mkdir`, `remove`, `stat`                                                                            |
 | `heapq`       | `heappush`, `heappop`, `heapify`                                                                                |
 | `collections` | `deque`, `OrderedDict`                                                                                          |
@@ -120,7 +122,7 @@ The bundled MicroPython interpreter supports the following features:
 
 - ✅ TCP sockets (client and server)
 - ✅ UDP sockets (v0.2.1+)
-- ❌ DNS resolution — use IP addresses directly
+- ✅ DNS resolution (v0.2.3+, requires `--allow-network`)
 - ❌ HTTPS/SSL — no TLS support
 
 **Python examples:**

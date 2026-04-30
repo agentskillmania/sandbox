@@ -1,6 +1,6 @@
 # @agentskillmania/sandbox
 
-WASM 沙箱工具，支持 busybox、wsh shell 和 micropython。
+WASM 沙箱工具，支持 busybox、sh shell 和 python。
 
 ## 特性
 
@@ -64,11 +64,11 @@ exec-in-sandbox [选项] -- <运行时> [参数...]
 
 **支持的运行时**：
 
-| 运行时        | 别名           | 说明                                     |
-| ------------- | -------------- | ---------------------------------------- |
-| `busybox`     | `bb`           | Busybox 小程序（ls、cat、echo、wget 等） |
-| `wsh`         | `sh`           | WSH shell 解释器（脚本、管道、变量）     |
-| `micropython` | `python`、`py` | MicroPython 解释器                       |
+| 运行时    | 别名               | 说明                                     |
+| --------- | ------------------ | ---------------------------------------- |
+| `busybox` | `bb`               | Busybox 小程序（ls、cat、echo、wget 等） |
+| `sh`      | `wsh`              | Shell 解释器（脚本、管道、变量）         |
+| `python`  | `py`、`micropython` | Python 解释器                            |
 
 ### CLI 示例
 
@@ -78,22 +78,22 @@ exec-in-sandbox -- busybox ls -la
 exec-in-sandbox -- busybox cat file.txt
 exec-in-sandbox -- busybox --list
 
-# 执行 wsh shell 脚本
-exec-in-sandbox -- wsh -c "echo hello | grep h"
-exec-in-sandbox -- wsh -c "X=10; Y=20; echo \$((X + Y))"
-exec-in-sandbox -- wsh -c $'echo hello\necho world'
+# 执行 sh shell 脚本
+exec-in-sandbox -- sh -c "echo hello | grep h"
+exec-in-sandbox -- sh -c "X=10; Y=20; echo \$((X + Y))"
+exec-in-sandbox -- sh -c $'echo hello\necho world'
 
 # 执行 Python 代码
-exec-in-sandbox -- micropython -c "print('hello from python')"
-exec-in-sandbox -- micropython -c "import os; print(os.listdir('.'))"
+exec-in-sandbox -- python -c "print('hello from python')"
+exec-in-sandbox -- python -c "import os; print(os.listdir('.'))"
 
 # 执行脚本文件
 exec-in-sandbox -- busybox script.sh
-exec-in-sandbox -- micropython script.py
+exec-in-sandbox -- python script.py
 
 # 使用共享文件系统
 exec-in-sandbox -- busybox -c "echo 'print(42)' > .sandbox/script.py"
-exec-in-sandbox -- micropython .sandbox/script.py
+exec-in-sandbox -- python .sandbox/script.py
 
 # 命令行选项（在 -- 之前）
 exec-in-sandbox --timeout=10000 --allow-network -- busybox curl https://example.com
@@ -209,7 +209,7 @@ network:
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │              执行器 (Executor)                      │  │
 │  │  - 验证安全策略                                     │  │
-│  │  - 分发到运行时 (busybox / wsh / micropython)       │  │
+│  │  - 分发到运行时 (busybox / sh / python)             │  │
 │  └─────────────────────────────────────────────────────┘  │
 │                          ↓                                │
 │  ┌─────────────────────────────────────────────────────┐  │
@@ -219,20 +219,20 @@ network:
 │  └─────────────────────────────────────────────────────┘  │
 │                          ↓                                │
 │  ┌──────────────┐  ┌──────────┐  ┌─────────────┐        │
-│  │ busybox.wasm │  │ wsh      │  │ micropython │        │
+│  │ busybox.wasm │  │ sh       │  │ python      │        │
 │  │ (小程序)     │  │ (shell)  │  │ (python)    │        │
 │  └──────────────┘  └──────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-1. **显式运行时选择**：用户指定使用哪个运行时（`busybox`、`wsh` 或 `micropython`）
+1. **显式运行时选择**：用户指定使用哪个运行时（`busybox`、`sh` 或 `python`）
 2. **安全验证**：执行前强制执行命令和网络策略
 3. **共享文件系统**：沙箱目录通过 `--dir` 映射到 WASM 进程
 4. **进程隔离**：每次执行都是独立的 wasmtime 进程，执行完成后退出
 
-## Shell 脚本支持 (wsh)
+## Shell 脚本支持 (sh)
 
-Shell 脚本（`.sh` 文件）和内联 shell 代码通过 **wsh** 执行，这是来自 busybox-wasi 的自定义 WASM shell 实现。
+Shell 脚本（`.sh` 文件）和内联 shell 代码通过 **sh**（底层为 wsh）执行，这是来自 busybox-wasi 的自定义 WASM shell 实现。
 
 ### 支持的功能
 
@@ -279,6 +279,71 @@ myfunc() { echo "not supported"; }
 - `#` 注释完全支持
 - 换行可以分隔命令（不需要到处用 `;`）
 - 避免函数定义 — 使用内联命令
+
+### MicroPython 功能
+
+集成的 MicroPython 解释器支持以下功能：
+
+| 模块          | 支持的功能                                                                                           |
+| ------------- | ---------------------------------------------------------------------------------------------------- |
+| `socket`      | TCP 客户端/服务端、**UDP** (v0.2.1+)、`connect`、`bind`、`listen`、`accept`、`send`/`recv`、`sendto`/`recvfrom` |
+| `asyncio`     | async/await、事件循环、锁、流                                                                        |
+| `json`        | `dumps`、`loads`                                                                                     |
+| `re`          | `match`、`search`、`sub`                                                                             |
+| `hashlib`     | `sha256`、`md5`                                                                                      |
+| `deflate`     | `DeflateIO`（压缩）                                                                                  |
+| `math`        | `pi`、`e`、`factorial`、`gamma`、`erf`                                                                |
+| `random`      | `random()`、`randint()`、`choice()`                                                                    |
+| `time`        | `time()`、`time_ns()`、`gmtime()`、`localtime()`、`mktime()` (v0.2.3+)                                  |
+| `sys`         | `exc_info()`、`atexit()` (v0.2.3+)                                                                   |
+| `os`          | `listdir`、`mkdir`、`remove`、`stat`                                                                   |
+| `heapq`       | `heappush`、`heappop`、`heapify`                                                                       |
+| `collections` | `deque`、`OrderedDict`                                                                               |
+
+**网络能力：**
+
+- ✅ TCP sockets（客户端和服务端）
+- ✅ UDP sockets (v0.2.1+)
+- ✅ DNS 解析 (v0.2.3+，需要 `--allow-network`)
+- ❌ HTTPS/SSL — 无 TLS 支持
+
+**Python 示例：**
+
+```bash
+# TCP 客户端
+exec-in-sandbox --allow-network -- python -c "
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('140.82.121.6', 80))
+s.send(b'GET / HTTP/1.0\r\n\r\n')
+print(s.recv(1024))
+s.close()
+"
+
+# UDP socket
+exec-in-sandbox --allow-network -- python -c "
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.sendto(b'hello', ('8.8.8.8', 53))
+data, addr = s.recvfrom(1024)
+print('Received from', addr)
+s.close()
+"
+
+# asyncio
+exec-in-sandbox -- python -c "
+import asyncio
+async def main():
+    print('hello async')
+asyncio.run(main())
+"
+
+# JSON
+exec-in-sandbox -- python -c "
+import json
+print(json.dumps({'name': 'sandbox', 'version': 1}))
+"
+```
 
 ## 性能
 
