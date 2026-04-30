@@ -101,6 +101,72 @@ exec-in-sandbox --command-allowlist "ls,cat,echo" -- busybox ls -la
 exec-in-sandbox --sandbox-dir=./my-sandbox -- busybox ls -la
 ```
 
+### MicroPython Features
+
+The bundled MicroPython interpreter supports the following features:
+
+| Module | Supported Features |
+| ------ | ------------------ |
+| `socket` | TCP client/server, **UDP** (v0.2.1+), `connect`, `bind`, `listen`, `accept`, `send`/`recv`, `sendto`/`recvfrom` |
+| `asyncio` | async/await, event loops, locks, streams |
+| `json` | `dumps`, `loads` |
+| `re` | `match`, `search`, `sub` |
+| `hashlib` | `sha256`, `md5` |
+| `deflate` | `DeflateIO` (compression) |
+| `math` | `pi`, `e`, `factorial`, `gamma`, `erf` |
+| `random` | `random()`, `randint()`, `choice()` |
+| `os` | `listdir`, `mkdir`, `remove`, `stat` |
+| `heapq` | `heappush`, `heappop`, `heapify` |
+| `collections` | `deque`, `OrderedDict` |
+
+**Network capabilities:**
+
+- ✅ TCP sockets (client and server)
+- ✅ UDP sockets (v0.2.1+)
+- ❌ DNS resolution — use IP addresses directly
+- ❌ HTTPS/SSL — no TLS support
+
+**Python examples:**
+
+```bash
+# TCP client
+exec-in-sandbox --allow-network -- micropython -c "
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect(('140.82.121.6', 80))
+s.send(b'GET / HTTP/1.0\r\n\r\n')
+print(s.recv(1024))
+s.close()
+"
+
+# UDP socket
+exec-in-sandbox --allow-network -- micropython -c "
+import socket
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.sendto(b'hello', ('8.8.8.8', 53))
+data, addr = s.recvfrom(1024)
+print('Received from', addr)
+s.close()
+"
+
+# asyncio
+exec-in-sandbox -- micropython -c "
+import asyncio
+async def main():
+    print('hello async')
+asyncio.run(main())
+"
+
+# JSON
+exec-in-sandbox -- micropython -c "
+import json
+print(json.dumps({'name': 'sandbox', 'version': 1}))
+"
+```
+
+**Global Options:**
+```
+
 **Global Options:**
 
 | CLI Option                      | Description                                                   |

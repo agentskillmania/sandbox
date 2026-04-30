@@ -31,7 +31,7 @@ describe('CLI: version command', () => {
   it('should show version information', () => {
     const output = execCli(['version']);
     expect(output).toContain('@agentskillmania/sandbox');
-    expect(output).toContain('0.2.0');
+    expect(output).toContain('0.2.1');
     expect(output).toContain('Runtimes');
   });
 
