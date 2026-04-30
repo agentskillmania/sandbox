@@ -25,8 +25,7 @@ describe('run_script tool', () => {
     mockSandbox = {
       runShell: vi.fn(),
       runPythonScript: vi.fn(),
-      updateConfig: vi.fn(),
-      config: {},
+      getSandboxDir: vi.fn().mockReturnValue('.sandbox-test'),
     };
     vi.mocked(writeFile).mockResolvedValue(undefined);
     vi.mocked(unlink).mockResolvedValue(undefined);
@@ -86,22 +85,6 @@ describe('run_script tool', () => {
     expect(result.isError).toBe(true);
   });
 
-  it('should handle timeout option', async () => {
-    mockSandbox.runShell.mockResolvedValue({
-      exitCode: 0,
-      stdout: 'test',
-      stderr: '',
-    });
-
-    await runScriptTool.handler(mockSandbox, {
-      language: 'sh',
-      content: 'echo test',
-      timeout: 5000,
-    });
-
-    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ timeout: 5000 });
-  });
-
   it('should clean up temp script file after execution', async () => {
     mockSandbox.runShell.mockResolvedValue({
       exitCode: 0,
@@ -130,7 +113,6 @@ describe('run_script tool', () => {
       content: 'echo test',
     });
 
-    // 应该仍然成功，即使清理失败
     expect(result.content[0].text).toContain('✅');
   });
 
@@ -153,10 +135,9 @@ describe('run_script tool', () => {
     expect(schema.required).toContain('content');
   });
 
-  it('should support optional timeout parameter', () => {
+  it('should not include timeout in schema', () => {
     const schema = runScriptTool.definition.inputSchema;
-    expect(schema.properties?.timeout).toBeDefined();
-    expect(schema.required).not.toContain('timeout');
+    expect(schema.properties?.timeout).toBeUndefined();
   });
 
   it('should support sh and py languages', () => {

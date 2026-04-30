@@ -21,30 +21,13 @@ export const runShellTool = {
           items: { type: 'string' },
           description: 'Command arguments',
         },
-        timeout: {
-          type: 'number',
-          description: 'Execution timeout in milliseconds (default: 5000)',
-        },
-        allowNetwork: {
-          type: 'boolean',
-          description: 'Allow network access (default: false)',
-        },
       },
       required: ['command'],
     },
   },
 
-  async handler(sandbox: Sandbox, args: any) {
-    const { command, args: cmdArgs = [], timeout, allowNetwork } = args;
-
-    const config: any = {};
-    if (timeout !== undefined) config.timeout = timeout;
-    if (allowNetwork !== undefined) config.allowNetwork = allowNetwork;
-
-    // Update sandbox config
-    if (timeout !== undefined) sandbox.updateConfig({ timeout });
-    if (allowNetwork !== undefined) sandbox.updateConfig({ allowNetwork });
-
+  async handler(sandbox: Sandbox, args: { command: string; args?: string[] }) {
+    const { command, args: cmdArgs = [] } = args;
     const result = await sandbox.runShell(command, cmdArgs);
 
     return {

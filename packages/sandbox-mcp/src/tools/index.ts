@@ -22,22 +22,25 @@ export function createToolHandlers(sandbox: Sandbox) {
       ];
     },
 
-    async callTool(name: string, args: any) {
+    async callTool(name: string, args: Record<string, unknown>) {
       switch (name) {
         case 'run_shell':
-          return await runShellTool.handler(sandbox, args);
+          return await runShellTool.handler(sandbox, args as { command: string; args?: string[] });
         case 'run_python':
-          return await runPythonTool.handler(sandbox, args);
+          return await runPythonTool.handler(sandbox, args as { code: string });
         case 'run_script':
-          return await runScriptTool.handler(sandbox, args);
+          return await runScriptTool.handler(
+            sandbox,
+            args as { language: 'sh' | 'py'; content: string }
+          );
         case 'read_file':
-          return await readFileTool.handler(sandbox, args);
+          return await readFileTool.handler(sandbox, args as { path: string });
         case 'write_file':
-          return await writeFileTool.handler(sandbox, args);
+          return await writeFileTool.handler(sandbox, args as { path: string; content: string });
         case 'list_files':
-          return await listFilesTool.handler(sandbox, args);
+          return await listFilesTool.handler(sandbox, args as { path?: string });
         case 'delete_file':
-          return await deleteFileTool.handler(sandbox, args);
+          return await deleteFileTool.handler(sandbox, args as { path: string });
         default:
           return {
             content: [

@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@agentskillmania/sandbox": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.0.4"
+    "@modelcontextprotocol/sdk": "1.29.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
@@ -34,7 +34,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   },
   "keywords": [
     "mcp",

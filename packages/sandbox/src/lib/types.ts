@@ -20,13 +20,17 @@ export interface SandboxConfig {
   timeout?: number;
   /** Allow network access */
   allowNetwork?: boolean;
-  /** Command allowlist (comma-separated) */
+  /** Command security policy (preferred over commandAllowlist/commandBlocklist) */
+  commandPolicy?: { mode: 'whitelist' | 'blacklist'; list: string[] };
+  /** Network security policy (reserved, domain filtering not yet implemented in WASI preview2) */
+  networkPolicy?: { mode: 'whitelist' | 'blacklist'; list: string[] };
+  /** Command allowlist (backward compatibility, use commandPolicy instead) */
   commandAllowlist?: string[];
-  /** Command blocklist (comma-separated) */
+  /** Command blocklist (backward compatibility, use commandPolicy instead) */
   commandBlocklist?: string[];
-  /** Network allowlist (domain list) */
+  /** Network allowlist (reserved) */
   networkAllowlist?: string[];
-  /** Network blocklist (domain list) */
+  /** Network blocklist (reserved) */
   networkBlocklist?: string[];
 }
 

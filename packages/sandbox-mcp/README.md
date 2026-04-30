@@ -8,8 +8,8 @@ MCP (Model Context Protocol) server for executing shell commands and Python code
 - ⚡ **Fast**: ~12ms average execution time using wasmtime runtime
 - 🛠️ **Rich Tool Set**: 7 tools covering shell, Python, scripts, and file operations
 - 🔧 **Environment Config**: Configure via environment variables, no config files needed
-- 🌐 **Network Control**: Optional network access with domain whitelist/blacklist
-- 📝 **Security Policies**: Command and network allowlist/blocklist support
+- 🌐 **Network Control**: Optional network access via global on/off switch (WASI preview2 does not support domain-level filtering)
+- 📝 **Security Policies**: Command whitelist/blacklist support
 
 ## Installation
 
@@ -45,13 +45,12 @@ export SANDBOX_TIMEOUT=5000
 export SANDBOX_ALLOW_NETWORK=false
 export SANDBOX_SANDBOX_DIR=".sandbox-mcp"
 
-# Security policies
+# Command security policy (whitelist or blacklist)
 export SANDBOX_COMMAND_MODE=whitelist
 export SANDBOX_COMMAND_LIST=ls,cat,echo
 
-# Network policies
-export SANDBOX_NETWORK_MODE=blacklist
-export SANDBOX_NETWORK_LIST=example.com,dangerous.site
+# Note: WASI preview2 does not support domain-level network filtering.
+# Network access is controlled only by the SANDBOX_ALLOW_NETWORK switch.
 ```
 
 ## Usage with Claude Desktop
@@ -184,15 +183,15 @@ Delete file from sandbox directory.
 
 ### Command Security
 
-- Whitelist mode: Only allow specified commands
-- Blacklist mode: Block dangerous commands
+- Whitelist mode: Only allow specified commands (`SANDBOX_COMMAND_MODE=whitelist SANDBOX_COMMAND_LIST=ls,cat`)
+- Blacklist mode: Block dangerous commands (`SANDBOX_COMMAND_MODE=blacklist SANDBOX_COMMAND_LIST=rm,format`)
 - Default: All commands allowed (configure for production)
 
 ### Network Security
 
 - Disabled by default for maximum security
 - Enable with `SANDBOX_ALLOW_NETWORK=true`
-- Whitelist/blacklist specific domains as needed
+- Domain-level filtering is not supported by WASI preview2; network is either fully on or fully off
 
 ## Performance
 

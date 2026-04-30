@@ -23,20 +23,15 @@ export const runScriptTool = {
           type: 'string',
           description: 'Script content to execute',
         },
-        timeout: {
-          type: 'number',
-          description: 'Execution timeout in milliseconds (default: 5000)',
-        },
       },
       required: ['language', 'content'],
     },
   },
 
-  async handler(sandbox: Sandbox, args: any) {
-    const { language, content, timeout } = args;
+  async handler(sandbox: Sandbox, args: { language: 'sh' | 'py'; content: string }) {
+    const { language, content } = args;
 
-    // Get sandbox directory
-    const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
+    const sandboxDir = sandbox.getSandboxDir();
     const ext = language === 'sh' ? 'sh' : 'py';
     const scriptPath = join(
       sandboxDir,
@@ -44,13 +39,8 @@ export const runScriptTool = {
     );
 
     try {
-      // Write script file
       await writeFile(scriptPath, content, 'utf-8');
 
-      // Update sandbox config
-      if (timeout !== undefined) sandbox.updateConfig({ timeout });
-
-      // Execute script
       const result =
         language === 'sh'
           ? await sandbox.runShell(scriptPath, [])
@@ -69,11 +59,10 @@ export const runScriptTool = {
         isError: result.exitCode !== 0,
       };
     } finally {
-      // 清理临时文件
       try {
         await unlink(scriptPath);
       } catch {
-        // 忽略删除错误
+        // ignore cleanup errors
       }
     }
   },

@@ -18,8 +18,6 @@ describe('run_python tool', () => {
   beforeEach(() => {
     mockSandbox = {
       runPython: vi.fn(),
-      updateConfig: vi.fn(),
-      config: {},
     };
   });
 
@@ -71,51 +69,6 @@ describe('run_python tool', () => {
     expect(result.isError).toBe(true);
   });
 
-  it('should handle timeout option', async () => {
-    mockSandbox.runPython.mockResolvedValue({
-      exitCode: 0,
-      stdout: 'test',
-      stderr: '',
-    });
-
-    await runPythonTool.handler(mockSandbox, {
-      code: 'print(1)',
-      timeout: 3000,
-    });
-
-    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ timeout: 3000 });
-  });
-
-  it('should handle allowNetwork true option', async () => {
-    mockSandbox.runPython.mockResolvedValue({
-      exitCode: 0,
-      stdout: 'test',
-      stderr: '',
-    });
-
-    await runPythonTool.handler(mockSandbox, {
-      code: 'print(1)',
-      allowNetwork: true,
-    });
-
-    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ allowNetwork: true });
-  });
-
-  it('should handle allowNetwork false option', async () => {
-    mockSandbox.runPython.mockResolvedValue({
-      exitCode: 0,
-      stdout: 'test',
-      stderr: '',
-    });
-
-    await runPythonTool.handler(mockSandbox, {
-      code: 'print(1)',
-      allowNetwork: false,
-    });
-
-    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ allowNetwork: false });
-  });
-
   it('should have correct tool definition', () => {
     expect(runPythonTool.definition.name).toBe('run_python');
     expect(runPythonTool.definition.description).toBeDefined();
@@ -129,16 +82,10 @@ describe('run_python tool', () => {
     expect(schema.required).toContain('code');
   });
 
-  it('should support optional timeout parameter', () => {
+  it('should not include timeout or allowNetwork in schema', () => {
     const schema = runPythonTool.definition.inputSchema;
-    expect(schema.properties?.timeout).toBeDefined();
-    expect(schema.required).not.toContain('timeout');
-  });
-
-  it('should support optional allowNetwork parameter', () => {
-    const schema = runPythonTool.definition.inputSchema;
-    expect(schema.properties?.allowNetwork).toBeDefined();
-    expect(schema.required).not.toContain('allowNetwork');
+    expect(schema.properties?.timeout).toBeUndefined();
+    expect(schema.properties?.allowNetwork).toBeUndefined();
   });
 
   it('should include stdout in success response', async () => {

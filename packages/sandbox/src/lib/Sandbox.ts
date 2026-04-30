@@ -4,42 +4,62 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { mkdirp } from 'mkdirp';
 import type { ExecResult, SandboxConfig } from './types.js';
-import { SecurityError, TimeoutError } from './types.js';
+import { TimeoutError } from './types.js';
+import { SecurityPolicy } from './core/security-policy.js';
 import { getWasmtimeExecutable, getWasmPaths, getRuntimeVersions } from './runtime.js';
 
 /**
  * Default configuration
  */
-const DEFAULT_CONFIG: Required<SandboxConfig> = {
-  sandboxDir: 'auto', // 'auto' means create temp directory
+const DEFAULT_CONFIG = {
+  sandboxDir: 'auto' as string | 'auto',
   timeout: 5000,
   allowNetwork: false,
-  commandAllowlist: [],
-  commandBlocklist: [],
-  networkAllowlist: [],
-  networkBlocklist: [],
+  commandAllowlist: [] as string[],
+  commandBlocklist: [] as string[],
+  networkAllowlist: [] as string[],
+  networkBlocklist: [] as string[],
 };
 
 /**
  * Sandbox class - executes WASM modules in isolated environment
  */
 export class Sandbox {
-  private config: Required<SandboxConfig>;
+  private config: SandboxConfig;
   private sandboxDir: string;
   private wasmPaths: ReturnType<typeof getWasmPaths>;
+  private securityPolicy: SecurityPolicy;
 
   constructor(options: SandboxConfig = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...options } as Required<SandboxConfig>;
+    // Normalize old array-style fields into unified policy objects
+    const commandPolicy =
+      options.commandPolicy ??
+      (options.commandAllowlist?.length
+        ? { mode: 'whitelist' as const, list: options.commandAllowlist }
+        : options.commandBlocklist?.length
+          ? { mode: 'blacklist' as const, list: options.commandBlocklist }
+          : undefined);
+
+    const networkPolicy =
+      options.networkPolicy ??
+      (options.networkAllowlist?.length
+        ? { mode: 'whitelist' as const, list: options.networkAllowlist }
+        : options.networkBlocklist?.length
+          ? { mode: 'blacklist' as const, list: options.networkBlocklist }
+          : undefined);
+
+    this.config = { ...DEFAULT_CONFIG, ...options, commandPolicy, networkPolicy };
 
     // Handle 'auto' for sandbox directory
     if (this.config.sandboxDir === 'auto') {
       // Create temp directory in system temp directory
       this.sandboxDir = mkdtempSync(join(tmpdir(), 'sandbox-'));
     } else {
-      this.sandboxDir = this.config.sandboxDir;
+      this.sandboxDir = this.config.sandboxDir!;
     }
 
     this.wasmPaths = getWasmPaths();
+    this.securityPolicy = new SecurityPolicy(commandPolicy);
 
     // Ensure sandbox directory exists
     this._ensureSandboxDir();
@@ -50,6 +70,13 @@ export class Sandbox {
    */
   updateConfig(updates: Partial<Pick<SandboxConfig, 'timeout' | 'allowNetwork'>>): void {
     this.config = { ...this.config, ...updates };
+  }
+
+  /**
+   * Get the sandbox directory path
+   */
+  getSandboxDir(): string {
+    return this.sandboxDir;
   }
 
   /**
@@ -65,20 +92,7 @@ export class Sandbox {
    * Validate if command is allowed based on whitelist/blacklist
    */
   private _validateCommand(command: string): void {
-    // Whitelist mode
-    if (this.config.commandAllowlist.length > 0) {
-      if (!this.config.commandAllowlist.includes(command)) {
-        throw new SecurityError(`Command '${command}' is not in the allowlist`);
-      }
-      return;
-    }
-
-    // Blacklist mode
-    if (this.config.commandBlocklist.length > 0) {
-      if (this.config.commandBlocklist.includes(command)) {
-        throw new SecurityError(`Command '${command}' is in the blocklist`);
-      }
-    }
+    this.securityPolicy.validate({ runtime: 'busybox', argv: [command] });
   }
 
   /**

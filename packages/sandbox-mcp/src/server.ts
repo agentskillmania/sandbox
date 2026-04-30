@@ -5,13 +5,15 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { Sandbox, SandboxConfig, checkRuntimeReady, ensureRuntime } from '@agentskillmania/sandbox';
+import { Sandbox, checkRuntimeReady, ensureRuntime } from '@agentskillmania/sandbox';
 import { createToolHandlers } from './tools/index.js';
-import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import type { MCPServerConfig } from './config.js';
 
-const require = createRequire(import.meta.url);
-const pkg = require('../package.json');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
 
 /**
  * 创建 MCP server 实例
@@ -25,11 +27,9 @@ export function createMCPServer(userConfig?: MCPServerConfig) {
     timeout: config.timeout,
     allowNetwork: config.allowNetwork,
     sandboxDir: config.sandboxDir,
-    commandMode: config.commandMode,
-    commandList: config.commandList,
-    networkMode: config.networkMode,
-    networkList: config.networkList,
-  } as SandboxConfig);
+    commandPolicy: config.commandPolicy,
+    networkPolicy: config.networkPolicy,
+  });
 
   // 创建 MCP server
   const server = new Server(
@@ -63,7 +63,7 @@ export function createMCPServer(userConfig?: MCPServerConfig) {
     }
 
     // 执行 tool
-    return await toolHandlers.callTool(name, args);
+    return await toolHandlers.callTool(name, args ?? {});
   });
 
   return server;
@@ -91,19 +91,17 @@ function loadConfigFromEnv(userConfig?: MCPServerConfig): MCPServerConfig {
   }
 
   // 命令安全策略
-  if (process.env.SANDBOX_COMMAND_MODE) {
-    config.commandMode = process.env.SANDBOX_COMMAND_MODE as 'blacklist' | 'whitelist';
-  }
-  if (process.env.SANDBOX_COMMAND_LIST) {
-    config.commandList = process.env.SANDBOX_COMMAND_LIST.split(',');
+  const commandMode = process.env.SANDBOX_COMMAND_MODE;
+  const commandList = process.env.SANDBOX_COMMAND_LIST?.split(',').filter(Boolean);
+  if (commandMode && commandList?.length) {
+    config.commandPolicy = { mode: commandMode as 'blacklist' | 'whitelist', list: commandList };
   }
 
-  // 网络安全策略
-  if (process.env.SANDBOX_NETWORK_MODE) {
-    config.networkMode = process.env.SANDBOX_NETWORK_MODE as 'blacklist' | 'whitelist';
-  }
-  if (process.env.SANDBOX_NETWORK_LIST) {
-    config.networkList = process.env.SANDBOX_NETWORK_LIST.split(',');
+  // 网络安全策略（预留，WASI preview2 暂不支持域名级过滤）
+  const networkMode = process.env.SANDBOX_NETWORK_MODE;
+  const networkList = process.env.SANDBOX_NETWORK_LIST?.split(',').filter(Boolean);
+  if (networkMode && networkList?.length) {
+    config.networkPolicy = { mode: networkMode as 'blacklist' | 'whitelist', list: networkList };
   }
 
   // 合并用户配置

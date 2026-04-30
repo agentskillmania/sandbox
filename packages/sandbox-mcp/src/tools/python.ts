@@ -16,26 +16,13 @@ export const runPythonTool = {
           type: 'string',
           description: 'Python code to execute',
         },
-        timeout: {
-          type: 'number',
-          description: 'Execution timeout in milliseconds (default: 5000)',
-        },
-        allowNetwork: {
-          type: 'boolean',
-          description: 'Allow network access (default: false)',
-        },
       },
       required: ['code'],
     },
   },
 
-  async handler(sandbox: Sandbox, args: any) {
-    const { code, timeout, allowNetwork } = args;
-
-    // Update sandbox config
-    if (timeout !== undefined) sandbox.updateConfig({ timeout });
-    if (allowNetwork !== undefined) sandbox.updateConfig({ allowNetwork });
-
+  async handler(sandbox: Sandbox, args: { code: string }) {
+    const { code } = args;
     const result = await sandbox.runPython(code);
 
     return {

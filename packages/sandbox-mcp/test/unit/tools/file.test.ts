@@ -26,7 +26,7 @@ describe('read_file tool', () => {
   let mockSandbox: any;
 
   beforeEach(() => {
-    mockSandbox = { sandboxDir: '.sandbox-test' };
+    mockSandbox = { getSandboxDir: () => '.sandbox-test' };
   });
 
   it('should read file content', async () => {
@@ -92,7 +92,7 @@ describe('write_file tool', () => {
   let mockSandbox: any;
 
   beforeEach(() => {
-    mockSandbox = { sandboxDir: '.sandbox-test' };
+    mockSandbox = { getSandboxDir: () => '.sandbox-test' };
   });
 
   it('should write file content', async () => {
@@ -164,7 +164,7 @@ describe('list_files tool', () => {
   let mockSandbox: any;
 
   beforeEach(() => {
-    mockSandbox = { sandboxDir: '.sandbox-test' };
+    mockSandbox = { getSandboxDir: () => '.sandbox-test' };
   });
 
   it('should list files in root directory', async () => {
@@ -230,7 +230,7 @@ describe('delete_file tool', () => {
   let mockSandbox: any;
 
   beforeEach(() => {
-    mockSandbox = { sandboxDir: '.sandbox-test' };
+    mockSandbox = { getSandboxDir: () => '.sandbox-test' };
   });
 
   it('should delete file', async () => {

@@ -64,10 +64,10 @@ exec-in-sandbox [选项] -- <运行时> [参数...]
 
 **支持的运行时**：
 
-| 运行时    | 别名               | 说明                                     |
-| --------- | ------------------ | ---------------------------------------- |
-| `busybox` | `bb`               | Busybox 小程序（ls、cat、echo、wget 等） |
-| `sh`      | `wsh`              | Shell 解释器（脚本、管道、变量）         |
+| 运行时    | 别名                | 说明                                     |
+| --------- | ------------------- | ---------------------------------------- |
+| `busybox` | `bb`                | Busybox 小程序（ls、cat、echo、wget 等） |
+| `sh`      | `wsh`               | Shell 解释器（脚本、管道、变量）         |
 | `python`  | `py`、`micropython` | Python 解释器                            |
 
 ### CLI 示例
@@ -284,21 +284,21 @@ myfunc() { echo "not supported"; }
 
 集成的 MicroPython 解释器支持以下功能：
 
-| 模块          | 支持的功能                                                                                           |
-| ------------- | ---------------------------------------------------------------------------------------------------- |
+| 模块          | 支持的功能                                                                                                      |
+| ------------- | --------------------------------------------------------------------------------------------------------------- |
 | `socket`      | TCP 客户端/服务端、**UDP** (v0.2.1+)、`connect`、`bind`、`listen`、`accept`、`send`/`recv`、`sendto`/`recvfrom` |
-| `asyncio`     | async/await、事件循环、锁、流                                                                        |
-| `json`        | `dumps`、`loads`                                                                                     |
-| `re`          | `match`、`search`、`sub`                                                                             |
-| `hashlib`     | `sha256`、`md5`                                                                                      |
-| `deflate`     | `DeflateIO`（压缩）                                                                                  |
-| `math`        | `pi`、`e`、`factorial`、`gamma`、`erf`                                                                |
-| `random`      | `random()`、`randint()`、`choice()`                                                                    |
-| `time`        | `time()`、`time_ns()`、`gmtime()`、`localtime()`、`mktime()` (v0.2.3+)                                  |
-| `sys`         | `exc_info()`、`atexit()` (v0.2.3+)                                                                   |
-| `os`          | `listdir`、`mkdir`、`remove`、`stat`                                                                   |
-| `heapq`       | `heappush`、`heappop`、`heapify`                                                                       |
-| `collections` | `deque`、`OrderedDict`                                                                               |
+| `asyncio`     | async/await、事件循环、锁、流                                                                                   |
+| `json`        | `dumps`、`loads`                                                                                                |
+| `re`          | `match`、`search`、`sub`                                                                                        |
+| `hashlib`     | `sha256`、`md5`                                                                                                 |
+| `deflate`     | `DeflateIO`（压缩）                                                                                             |
+| `math`        | `pi`、`e`、`factorial`、`gamma`、`erf`                                                                          |
+| `random`      | `random()`、`randint()`、`choice()`                                                                             |
+| `time`        | `time()`、`time_ns()`、`gmtime()`、`localtime()`、`mktime()` (v0.2.3+)                                          |
+| `sys`         | `exc_info()`、`atexit()` (v0.2.3+)                                                                              |
+| `os`          | `listdir`、`mkdir`、`remove`、`stat`                                                                            |
+| `heapq`       | `heappush`、`heappop`、`heapify`                                                                                |
+| `collections` | `deque`、`OrderedDict`                                                                                          |
 
 **网络能力：**
 

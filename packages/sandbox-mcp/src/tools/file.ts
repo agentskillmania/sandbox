@@ -39,9 +39,9 @@ export const readFileTool = {
     },
   },
 
-  async handler(sandbox: Sandbox, args: any) {
+  async handler(sandbox: Sandbox, args: { path: string }) {
     const { path } = args;
-    const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
+    const sandboxDir = sandbox.getSandboxDir();
 
     try {
       const fullPath = resolveSandboxPath(sandboxDir, path);
@@ -89,9 +89,9 @@ export const writeFileTool = {
     },
   },
 
-  async handler(sandbox: Sandbox, args: any) {
+  async handler(sandbox: Sandbox, args: { path: string; content: string }) {
     const { path, content } = args;
-    const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
+    const sandboxDir = sandbox.getSandboxDir();
 
     try {
       const fullPath = resolveSandboxPath(sandboxDir, path);
@@ -135,9 +135,9 @@ export const listFilesTool = {
     },
   },
 
-  async handler(sandbox: Sandbox, args: any) {
+  async handler(sandbox: Sandbox, args: { path?: string }) {
     const { path = '.' } = args;
-    const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
+    const sandboxDir = sandbox.getSandboxDir();
 
     try {
       const fullPath = resolveSandboxPath(sandboxDir, path);
@@ -181,9 +181,9 @@ export const deleteFileTool = {
     },
   },
 
-  async handler(sandbox: Sandbox, args: any) {
+  async handler(sandbox: Sandbox, args: { path: string }) {
     const { path } = args;
-    const sandboxDir = (sandbox as any).sandboxDir || '.sandbox-mcp';
+    const sandboxDir = sandbox.getSandboxDir();
 
     try {
       const fullPath = resolveSandboxPath(sandboxDir, path);

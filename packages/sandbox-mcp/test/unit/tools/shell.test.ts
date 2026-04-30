@@ -18,8 +18,6 @@ describe('run_shell tool', () => {
   beforeEach(() => {
     mockSandbox = {
       runShell: vi.fn(),
-      updateConfig: vi.fn(),
-      config: {},
     };
   });
 
@@ -74,53 +72,6 @@ describe('run_shell tool', () => {
     expect(result.isError).toBe(true);
   });
 
-  it('should handle timeout option', async () => {
-    mockSandbox.runShell.mockResolvedValue({
-      exitCode: 0,
-      stdout: 'test',
-      stderr: '',
-    });
-
-    await runShellTool.handler(mockSandbox, {
-      command: 'sleep',
-      args: ['1'],
-      timeout: 500,
-    });
-
-    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ timeout: 500 });
-  });
-
-  it('should handle allowNetwork true option', async () => {
-    mockSandbox.runShell.mockResolvedValue({
-      exitCode: 0,
-      stdout: 'test',
-      stderr: '',
-    });
-
-    await runShellTool.handler(mockSandbox, {
-      command: 'wget',
-      args: ['http://example.com'],
-      allowNetwork: true,
-    });
-
-    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ allowNetwork: true });
-  });
-
-  it('should handle allowNetwork false option', async () => {
-    mockSandbox.runShell.mockResolvedValue({
-      exitCode: 0,
-      stdout: 'test',
-      stderr: '',
-    });
-
-    await runShellTool.handler(mockSandbox, {
-      command: 'ls',
-      allowNetwork: false,
-    });
-
-    expect(mockSandbox.updateConfig).toHaveBeenCalledWith({ allowNetwork: false });
-  });
-
   it('should have correct tool definition', () => {
     expect(runShellTool.definition.name).toBe('run_shell');
     expect(runShellTool.definition.description).toBeDefined();
@@ -140,16 +91,10 @@ describe('run_shell tool', () => {
     expect(schema.required).not.toContain('args');
   });
 
-  it('should support optional timeout parameter', () => {
+  it('should not include timeout or allowNetwork in schema', () => {
     const schema = runShellTool.definition.inputSchema;
-    expect(schema.properties?.timeout).toBeDefined();
-    expect(schema.required).not.toContain('timeout');
-  });
-
-  it('should support optional allowNetwork parameter', () => {
-    const schema = runShellTool.definition.inputSchema;
-    expect(schema.properties?.allowNetwork).toBeDefined();
-    expect(schema.required).not.toContain('allowNetwork');
+    expect(schema.properties?.timeout).toBeUndefined();
+    expect(schema.properties?.allowNetwork).toBeUndefined();
   });
 
   it('should include stdout in success response', async () => {

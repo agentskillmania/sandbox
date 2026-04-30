@@ -19,6 +19,7 @@ vi.mock('@agentskillmania/sandbox', () => ({
       stdout: '42',
       stderr: '',
     }),
+    getSandboxDir: vi.fn().mockReturnValue('.sandbox-mcp'),
   })),
   checkRuntimeReady: vi.fn().mockReturnValue({ ready: true }),
   ensureRuntime: vi.fn().mockResolvedValue(undefined),
@@ -58,8 +59,7 @@ describe('MCP Server: createMCPServer', () => {
 
   it('should create server with command security config', () => {
     const securityConfig = {
-      commandMode: 'whitelist' as const,
-      commandList: ['ls', 'cat'],
+      commandPolicy: { mode: 'whitelist' as const, list: ['ls', 'cat'] },
     };
     const server = createMCPServer(securityConfig);
     expect(server).toBeDefined();
@@ -67,8 +67,7 @@ describe('MCP Server: createMCPServer', () => {
 
   it('should create server with network security config', () => {
     const securityConfig = {
-      networkMode: 'blacklist' as const,
-      networkList: ['example.com'],
+      networkPolicy: { mode: 'blacklist' as const, list: ['example.com'] },
     };
     const server = createMCPServer(securityConfig);
     expect(server).toBeDefined();
@@ -109,25 +108,15 @@ describe('MCP Server: environment config', () => {
     expect(server).toBeDefined();
   });
 
-  it('should load command mode from env', () => {
+  it('should load command security from env', () => {
     process.env.SANDBOX_COMMAND_MODE = 'whitelist';
-    const server = createMCPServer();
-    expect(server).toBeDefined();
-  });
-
-  it('should load network mode from env', () => {
-    process.env.SANDBOX_NETWORK_MODE = 'blacklist';
-    const server = createMCPServer();
-    expect(server).toBeDefined();
-  });
-
-  it('should load command list from env', () => {
     process.env.SANDBOX_COMMAND_LIST = 'ls,cat,echo';
     const server = createMCPServer();
     expect(server).toBeDefined();
   });
 
-  it('should load network list from env', () => {
+  it('should load network security from env', () => {
+    process.env.SANDBOX_NETWORK_MODE = 'blacklist';
     process.env.SANDBOX_NETWORK_LIST = 'example.com,test.com';
     const server = createMCPServer();
     expect(server).toBeDefined();
