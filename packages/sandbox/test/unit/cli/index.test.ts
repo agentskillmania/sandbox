@@ -7,7 +7,11 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { createRequire } from 'node:module';
 import { getWasmtimeExecutable } from '../../../src/lib/runtime.js';
+
+const require = createRequire(import.meta.url);
+const pkg = require('../../../package.json');
 
 const cliPath = join(process.cwd(), 'dist/cli/index.js');
 let wasmtimeInstalled: boolean;
@@ -31,7 +35,7 @@ describe('CLI: version command', () => {
   it('should show version information', () => {
     const output = execCli(['version']);
     expect(output).toContain('@agentskillmania/sandbox');
-    expect(output).toContain('0.2.1');
+    expect(output).toContain(pkg.version);
     expect(output).toContain('Runtimes');
   });
 
