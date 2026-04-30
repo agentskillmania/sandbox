@@ -1,6 +1,6 @@
 {
   "name": "@agentskillmania/sandbox",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "WASM sandbox for busybox and micropython",
   "type": "module",
   "publishConfig": {
