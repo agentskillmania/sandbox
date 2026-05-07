@@ -8,11 +8,11 @@ A monorepo containing WASM sandbox packages for secure code execution in AI agen
 
 Core WASM sandbox library with CLI tool.
 
-- Lightweight WASM sandbox for busybox and micropython
+- Lightweight WASM sandbox for shell commands, Python, and Git
 - Node.js SDK and CLI interface
 - Automatic runtime installation (wasmtime 43.0.0)
 - ~12ms average execution time
-- Support for shell commands, Python code, and script execution
+- Filesystem isolation via wasmtime `--dir` mappings
 
 **Install**: `npm install @agentskillmania/sandbox`
 
@@ -22,8 +22,8 @@ MCP (Model Context Protocol) server for Claude Desktop and other MCP-compatible 
 
 - 7 tools: run_shell, run_python, run_script, read_file, write_file, list_files, delete_file
 - Environment variable configuration
-- Command and network security policies
 - Filesystem isolation
+- Network on/off switch
 
 **Install**: `npm install @agentskillmania/sandbox-mcp`
 
@@ -35,10 +35,13 @@ MCP (Model Context Protocol) server for Claude Desktop and other MCP-compatible 
 npm install -g @agentskillmania/sandbox
 
 # Execute shell command
-exec-in-sandbox busybox ls -la
+exec-in-sandbox -- "ls -la"
 
 # Execute Python code
-exec-in-sandbox python -c "print('Hello WASM!')"
+exec-in-sandbox -- "python -c \"print('Hello WASM!')\""
+
+# Execute Git command
+exec-in-sandbox -- "git status"
 ```
 
 ### Use with Node.js
@@ -48,12 +51,12 @@ import { Sandbox } from '@agentskillmania/sandbox';
 
 const sandbox = new Sandbox();
 
-// Execute shell command
-const result = await sandbox.runShell('ls', ['-la']);
+// Execute any command
+const result = await sandbox.run('ls -la');
 console.log(result.stdout);
 
 // Execute Python code
-const pyResult = await sandbox.runPython('print(2 + 2)');
+const pyResult = await sandbox.run("python -c 'print(2 + 2)'");
 console.log(pyResult.stdout);
 ```
 

@@ -5,11 +5,9 @@ import { performance } from 'node:perf_hooks';
 
 describe('Performance Benchmark Tests', () => {
   let busyboxExists: boolean;
-  let micropythonExists: boolean;
 
   beforeAll(() => {
     busyboxExists = existsSync('./wasm/busybox.wasm');
-    micropythonExists = existsSync('./wasm/micropython.wasm');
   });
 
   describe('Cold start performance', () => {
@@ -43,14 +41,14 @@ describe('Performance Benchmark Tests', () => {
 
       const start = performance.now();
 
-      await sandbox.runShell('echo', ['test']);
+      await sandbox.run('echo test');
       const end = performance.now();
       const duration = end - start;
 
       console.log(`First command execution time: ${duration.toFixed(2)}ms`);
 
-      // First execution includes WASM loading, so it should be < 500ms
-      expect(duration).toBeLessThan(500);
+      // First execution includes WASM loading, so it should be < 300ms
+      expect(duration).toBeLessThan(300);
     }, 10000);
   });
 
@@ -67,12 +65,12 @@ describe('Performance Benchmark Tests', () => {
       });
 
       // Warm up
-      await sandbox.runShell('echo', ['warmup']);
+      await sandbox.run('echo warmup');
 
       const times: number[] = [];
       for (let i = 0; i < 5; i++) {
         const start = performance.now();
-        await sandbox.runShell('echo', ['test']);
+        await sandbox.run('echo test');
         const end = performance.now();
         times.push(end - start);
       }
@@ -91,8 +89,8 @@ describe('Performance Benchmark Tests', () => {
     }, 15000);
 
     it('should execute Python code efficiently', async () => {
-      if (!micropythonExists) {
-        console.log('micropython.wasm not found, skipping test');
+      if (!busyboxExists) {
+        console.log('busybox.wasm not found, skipping test');
         return;
       }
 
@@ -102,12 +100,12 @@ describe('Performance Benchmark Tests', () => {
       });
 
       // Warm up
-      await sandbox.runPython('print("warmup")');
+      await sandbox.run('python -c \'print("warmup")\'');
 
       const times: number[] = [];
       for (let i = 0; i < 5; i++) {
         const start = performance.now();
-        await sandbox.runPython('print("test")');
+        await sandbox.run('python -c \'print("test")\'');
         const end = performance.now();
         times.push(end - start);
       }
@@ -121,8 +119,8 @@ describe('Performance Benchmark Tests', () => {
       console.log(`  Min: ${minTime.toFixed(2)}ms`);
       console.log(`  Max: ${maxTime.toFixed(2)}ms`);
 
-      // Python should be reasonably fast (< 300ms average)
-      expect(avgTime).toBeLessThan(300);
+      // Python should be reasonably fast (< 200ms average after warmup)
+      expect(avgTime).toBeLessThan(200);
     }, 15000);
   });
 
@@ -147,7 +145,7 @@ describe('Performance Benchmark Tests', () => {
 
       // Execute many commands
       for (let i = 0; i < 50; i++) {
-        await sandbox.runShell('echo', [`test-${i}`]);
+        await sandbox.run(`echo test-${i}`);
       }
 
       // Get final memory usage
@@ -162,14 +160,14 @@ describe('Performance Benchmark Tests', () => {
 
       console.log(`Heap growth: ${heapGrowthMB.toFixed(2)}MB`);
 
-      // Heap growth should be reasonable (< 10MB for 50 executions)
-      expect(heapGrowthMB).toBeLessThan(10);
+      // Heap growth should be minimal (< 5MB for 50 executions)
+      expect(heapGrowthMB).toBeLessThan(5);
     }, 30000);
   });
 
   describe('Concurrent execution', () => {
     it('should handle multiple concurrent sandboxes', async () => {
-      if (!micropythonExists) {
+      if (!busyboxExists) {
         console.log('busybox.wasm not found, skipping test');
         return;
       }
@@ -183,7 +181,7 @@ describe('Performance Benchmark Tests', () => {
           sandboxDir: `.sandbox-test-perf-${i}`,
           timeout: 5000,
         });
-        promises.push(sandbox.runPython('print("test")'));
+        promises.push(sandbox.run('python -c \'print("test")\''));
       }
 
       await Promise.all(promises);
@@ -201,7 +199,7 @@ describe('Performance Benchmark Tests', () => {
 
   describe('Comparison baseline', () => {
     it('should log performance for comparison', async () => {
-      if (!busyboxExists || !micropythonExists) {
+      if (!busyboxExists) {
         console.log('WASM files not found, skipping test');
         return;
       }
@@ -215,17 +213,17 @@ describe('Performance Benchmark Tests', () => {
 
       // Test echo command
       let start = performance.now();
-      await sandbox.runShell('echo', ['test']);
+      await sandbox.run('echo test');
       results['echo'] = performance.now() - start;
 
       // Test Python print
       start = performance.now();
-      await sandbox.runPython('print("test")');
+      await sandbox.run('python -c \'print("test")\'');
       results['python_print'] = performance.now() - start;
 
       // Test Python math
       start = performance.now();
-      await sandbox.runPython('x = sum(range(100)); print(x)');
+      await sandbox.run("python -c 'x = sum(range(100)); print(x)'");
       results['python_math'] = performance.now() - start;
 
       console.log('\n=== Performance Baseline ===');

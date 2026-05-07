@@ -11,7 +11,6 @@ vi.mock('../../../src/lib/runtime.js', async (importOriginal) => {
     getWasmtimeExecutable: vi.fn(() => '/mock/wasmtime'),
     getWasmPaths: vi.fn(() => ({
       busybox: '/mock/busybox.wasm',
-      micropython: '/mock/micropython.wasm',
     })),
     getRuntimeVersions: vi.fn(() => ({
       wasmtime: {
@@ -21,7 +20,6 @@ vi.mock('../../../src/lib/runtime.js', async (importOriginal) => {
         expectedVersion: 'v43.0.0',
       },
       busybox: { found: true, path: '/mock/busybox.wasm' },
-      micropython: { found: true, path: '/mock/micropython.wasm' },
     })),
   };
 });
@@ -46,6 +44,11 @@ vi.mock('node:fs', () => ({
     }
     return '';
   }),
+  rmSync: vi.fn(),
+}));
+
+vi.mock('node:crypto', () => ({
+  randomUUID: vi.fn(() => 'test-uuid'),
 }));
 
 // Mock os
@@ -65,10 +68,8 @@ describe('Sandbox', () => {
   let sandbox: Sandbox;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
 
-    // Default mock implementation for successful execution
     mockSpawn.mockReturnValue({
       stdout: {
         on: vi.fn((event, callback) => {
@@ -82,7 +83,6 @@ describe('Sandbox', () => {
       },
       on: vi.fn((event, callback) => {
         if (event === 'close') {
-          // Immediately call close callback
           setImmediate(() => callback(0));
         }
       }),
@@ -107,57 +107,68 @@ describe('Sandbox', () => {
     });
   });
 
-  describe('runShell', () => {
+  describe('run', () => {
     it('should successfully execute simple shell command', async () => {
-      const result = await sandbox.runShell('echo', ['hello']);
+      const result = await sandbox.run('echo hello');
       expect(result.exitCode).toBe(0);
       expect(mockSpawn).toHaveBeenCalled();
     });
 
-    it('should throw SecurityError when command not in allowlist', async () => {
-      const sb = new Sandbox({ commandAllowlist: ['ls', 'cat'] });
-
-      await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow(SecurityError);
-      await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow(
-        "Command 'rm' is not in the allowlist"
-      );
+    it('should execute python command', async () => {
+      const result = await sandbox.run("python -c 'print(42)'");
+      expect(result.exitCode).toBe(0);
+      expect(mockSpawn).toHaveBeenCalled();
     });
 
-    it('should throw SecurityError when command in blocklist', async () => {
-      const sb = new Sandbox({ commandBlocklist: ['rm', 'format'] });
+    it('should execute git command', async () => {
+      const result = await sandbox.run('git --version');
+      expect(result.exitCode).toBe(0);
+      expect(mockSpawn).toHaveBeenCalled();
+    });
 
-      await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow(SecurityError);
-      await expect(sb.runShell('rm', ['file.txt'])).rejects.toThrow(
-        "Command 'rm' is in the blocklist"
-      );
+    it('should allow all commands regardless of allowlist config', async () => {
+      const sb = new Sandbox({ commandAllowlist: ['ls', 'cat'] });
+      const result = await sb.run('rm file.txt');
+      expect(result.exitCode).toBe(0);
+    });
+
+    it('should allow all commands regardless of blocklist config', async () => {
+      const sb = new Sandbox({ commandBlocklist: ['rm', 'format'] });
+      const result = await sb.run('rm file.txt');
+      expect(result.exitCode).toBe(0);
     });
 
     it('should allow command in allowlist', async () => {
       const sb = new Sandbox({ commandAllowlist: ['ls', 'cat'] });
-      const result = await sb.runShell('ls', ['-la']);
+      const result = await sb.run('ls -la');
       expect(result.exitCode).toBe(0);
     });
 
     it('should allow command not in blocklist', async () => {
       const sb = new Sandbox({ commandBlocklist: ['rm', 'format'] });
-      const result = await sb.runShell('ls', ['-la']);
+      const result = await sb.run('ls -la');
       expect(result.exitCode).toBe(0);
     });
   });
 
-  describe('runPython', () => {
-    it('should successfully execute Python code', async () => {
-      const result = await sandbox.runPython("print('hello')");
+  describe('script file execution', () => {
+    it('should detect .sh script files', async () => {
+      const result = await sandbox.run('test.sh');
       expect(result.exitCode).toBe(0);
       expect(mockSpawn).toHaveBeenCalled();
     });
-  });
 
-  describe('runPythonScript', () => {
-    it('should successfully execute Python script', async () => {
-      const result = await sandbox.runPythonScript('script.py', ['arg1']);
+    it('should detect .py script files', async () => {
+      const result = await sandbox.run('test.py');
       expect(result.exitCode).toBe(0);
       expect(mockSpawn).toHaveBeenCalled();
+    });
+
+    it('should handle script file not found', async () => {
+      const { existsSync } = await import('node:fs');
+      vi.mocked(existsSync).mockReturnValueOnce(false);
+
+      await expect(sandbox.run('nonexistent.sh')).rejects.toThrow('Script file not found');
     });
   });
 
@@ -165,7 +176,6 @@ describe('Sandbox', () => {
     it('should terminate execution on timeout', async () => {
       const sb = new Sandbox({ timeout: 100 });
 
-      // Mock spawn that never closes (simulates timeout)
       mockSpawn.mockReturnValue({
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() },
@@ -175,7 +185,7 @@ describe('Sandbox', () => {
         kill: vi.fn(),
       });
 
-      await expect(sb.runShell('sleep', ['10'])).rejects.toThrow(TimeoutError);
+      await expect(sb.run('sleep 10')).rejects.toThrow(TimeoutError);
     });
   });
 
@@ -185,7 +195,7 @@ describe('Sandbox', () => {
         throw new Error('Spawn failed');
       });
 
-      await expect(sandbox.runShell('echo', ['test'])).rejects.toThrow('Spawn failed');
+      await expect(sandbox.run('echo test')).rejects.toThrow('Spawn failed');
     });
 
     it('should handle process error event', async () => {
@@ -200,7 +210,7 @@ describe('Sandbox', () => {
         kill: vi.fn(),
       });
 
-      await expect(sandbox.runShell('echo', ['test'])).rejects.toThrow('Process error');
+      await expect(sandbox.run('echo test')).rejects.toThrow('Process error');
     });
   });
 
@@ -209,120 +219,7 @@ describe('Sandbox', () => {
       const versions = Sandbox.getRuntimeVersions();
       expect(versions).toHaveProperty('wasmtime');
       expect(versions).toHaveProperty('busybox');
-      expect(versions).toHaveProperty('micropython');
-    });
-  });
-
-  describe('script file execution', () => {
-    it('should detect .sh script files', async () => {
-      const result = await sandbox.runShell('busybox', ['test.sh']);
-      expect(result.exitCode).toBe(0);
-      // Should call spawn for script execution
-      expect(mockSpawn).toHaveBeenCalled();
-    });
-
-    it('should detect .py script files', async () => {
-      const result = await sandbox.runShell('busybox', ['test.py']);
-      expect(result.exitCode).toBe(0);
-      expect(mockSpawn).toHaveBeenCalled();
-    });
-
-    it('should not detect non-script files', async () => {
-      const result = await sandbox.runShell('busybox', ['test.txt']);
-      expect(result.exitCode).toBe(0);
-      // Should call with normal busybox args
-      expect(mockSpawn).toHaveBeenCalled();
-    });
-
-    it('should not treat .pl files as scripts (passes to busybox)', async () => {
-      const result = await sandbox.runShell('busybox', ['test.pl']);
-      expect(result.exitCode).toBe(0);
-      // .pl files are not supported, so they're passed to busybox as normal args
-      expect(mockSpawn).toHaveBeenCalled();
-    });
-
-    it('should handle different shebang types in shell scripts', async () => {
-      // 测试 shebang 解析分支覆盖
-      const { readFileSync } = await import('node:fs');
-
-      // 测试不支持的 shebang (行 326-330)
-      vi.mocked(readFileSync).mockReturnValueOnce('#!/usr/bin/perl\nprint("test")');
-      await expect(sandbox.runShell('busybox', ['test.sh'])).rejects.toThrow();
-
-      // 测试支持的 shebang
-      vi.mocked(readFileSync).mockReturnValueOnce('#!/bin/sh\necho test');
-      let result = await sandbox.runShell('busybox', ['test.sh']);
-      expect(result.exitCode).toBe(0);
-
-      vi.mocked(readFileSync).mockReturnValueOnce('#!/bin/bash\necho test');
-      result = await sandbox.runShell('busybox', ['test.sh']);
-      expect(result.exitCode).toBe(0);
-    });
-
-    it('should preserve newlines and comments in shell scripts', async () => {
-      const { readFileSync } = await import('node:fs');
-      vi.mocked(readFileSync).mockReturnValue('# This is a comment\nX=10\nY=20\necho $((X + Y))');
-
-      await sandbox.runShell('busybox', ['test.sh']);
-
-      const lastCall = mockSpawn.mock.lastCall;
-      const wasmtimeArgs = lastCall[1];
-      const cIndex = wasmtimeArgs.indexOf('-c');
-      const scriptContent = wasmtimeArgs[cIndex + 1];
-
-      // Should preserve original newlines, not convert all to semicolons
-      expect(scriptContent).toContain('\n');
-      expect(scriptContent).toContain('# This is a comment');
-
-      // Restore default mock
-      vi.mocked(readFileSync).mockRestore();
-    });
-
-    it('should not treat sh substring as sh command', async () => {
-      // Mock stderr output
-      mockSpawn.mockReturnValue({
-        stdout: { on: vi.fn() },
-        stderr: {
-          on: vi.fn((event, callback) => {
-            if (event === 'data') callback(Buffer.from('error output'));
-          }),
-        },
-        on: vi.fn((event, callback) => {
-          if (event === 'close') setImmediate(() => callback(0));
-        }),
-        kill: vi.fn(),
-      });
-
-      const result = await sandbox.runShell('cat', ['mywshfile.txt']);
-
-      // Non-wsh commands should preserve stderr separately
-      expect(result.stderr).toBe('error output');
-    });
-  });
-
-  describe('runPythonScript - error cases', () => {
-    it('should handle script file not found', async () => {
-      // 测试未覆盖的分支：脚本文件不存在 (行 388-390)
-      const { existsSync } = await import('node:fs');
-      vi.mocked(existsSync).mockReturnValueOnce(false);
-
-      await expect(sandbox.runPythonScript('nonexistent.py', [])).rejects.toThrow(
-        'Script file not found'
-      );
-    });
-
-    it('should handle script arguments with warning', async () => {
-      // 测试未覆盖的分支：Python 脚本带参数 (行 357-359)
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const result = await sandbox.runPythonScript('test.py', ['arg1']);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Warning: Script arguments are not supported for .py files in WASM sandbox'
-      );
-      expect(result.exitCode).toBe(0);
-
-      consoleSpy.mockRestore();
+      expect(versions).not.toHaveProperty('micropython');
     });
   });
 });

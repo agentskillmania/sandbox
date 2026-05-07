@@ -17,46 +17,59 @@ describe('run_shell tool', () => {
 
   beforeEach(() => {
     mockSandbox = {
-      runShell: vi.fn(),
+      run: vi.fn(),
     };
   });
 
   it('should execute simple command', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: 'hello world',
       stderr: '',
     });
 
     const result = await runShellTool.handler(mockSandbox, {
-      command: 'echo',
-      args: ['hello', 'world'],
+      command: 'echo hello world',
     });
 
-    expect(mockSandbox.runShell).toHaveBeenCalledWith('echo', ['hello', 'world']);
+    expect(mockSandbox.run).toHaveBeenCalledWith('echo hello world');
     expect(result.content[0].text).toContain('✅');
     expect(result.content[0].text).toContain('hello world');
     expect(result.isError).toBe(false);
   });
 
-  it('should execute command with no arguments', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+  it('should execute python command', async () => {
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
-      stdout: 'test',
+      stdout: '42',
       stderr: '',
     });
 
     const result = await runShellTool.handler(mockSandbox, {
-      command: 'pwd',
-      args: [],
+      command: "python -c 'print(42)'",
     });
 
-    expect(mockSandbox.runShell).toHaveBeenCalledWith('pwd', []);
+    expect(mockSandbox.run).toHaveBeenCalledWith("python -c 'print(42)'");
+    expect(result.content[0].text).toContain('✅');
+  });
+
+  it('should execute git command', async () => {
+    mockSandbox.run.mockResolvedValue({
+      exitCode: 0,
+      stdout: 'git2 version 1.9.2',
+      stderr: '',
+    });
+
+    const result = await runShellTool.handler(mockSandbox, {
+      command: 'git --version',
+    });
+
+    expect(mockSandbox.run).toHaveBeenCalledWith('git --version');
     expect(result.content[0].text).toContain('✅');
   });
 
   it('should handle command failure', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 1,
       stdout: '',
       stderr: 'command not found',
@@ -85,12 +98,6 @@ describe('run_shell tool', () => {
     expect(schema.required).toContain('command');
   });
 
-  it('should support optional args parameter', () => {
-    const schema = runShellTool.definition.inputSchema;
-    expect(schema.properties?.args).toBeDefined();
-    expect(schema.required).not.toContain('args');
-  });
-
   it('should not include timeout or allowNetwork in schema', () => {
     const schema = runShellTool.definition.inputSchema;
     expect(schema.properties?.timeout).toBeUndefined();
@@ -98,15 +105,14 @@ describe('run_shell tool', () => {
   });
 
   it('should include stdout in success response', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: 'output line 1\noutput line 2',
       stderr: '',
     });
 
     const result = await runShellTool.handler(mockSandbox, {
-      command: 'cat',
-      args: ['file.txt'],
+      command: 'cat file.txt',
     });
 
     expect(result.content[0].text).toContain('STDOUT:');
@@ -114,7 +120,7 @@ describe('run_shell tool', () => {
   });
 
   it('should include both stdout and stderr in error response', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 2,
       stdout: 'some output',
       stderr: 'error message',

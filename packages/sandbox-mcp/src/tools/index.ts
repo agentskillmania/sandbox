@@ -25,7 +25,7 @@ export function createToolHandlers(sandbox: Sandbox) {
     async callTool(name: string, args: Record<string, unknown>) {
       switch (name) {
         case 'run_shell':
-          return await runShellTool.handler(sandbox, args as { command: string; args?: string[] });
+          return await runShellTool.handler(sandbox, args as { command: string });
         case 'run_python':
           return await runPythonTool.handler(sandbox, args as { code: string });
         case 'run_script':

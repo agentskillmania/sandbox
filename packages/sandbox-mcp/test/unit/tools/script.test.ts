@@ -23,8 +23,7 @@ describe('run_script tool', () => {
 
   beforeEach(() => {
     mockSandbox = {
-      runShell: vi.fn(),
-      runPythonScript: vi.fn(),
+      run: vi.fn(),
       getSandboxDir: vi.fn().mockReturnValue('.sandbox-test'),
     };
     vi.mocked(writeFile).mockResolvedValue(undefined);
@@ -32,7 +31,7 @@ describe('run_script tool', () => {
   });
 
   it('should execute shell script', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: 'hello world',
       stderr: '',
@@ -44,13 +43,13 @@ describe('run_script tool', () => {
     });
 
     expect(writeFile).toHaveBeenCalled();
-    expect(mockSandbox.runShell).toHaveBeenCalledWith(expect.stringContaining('temp_script'), []);
+    expect(mockSandbox.run).toHaveBeenCalledWith(expect.stringContaining('temp_script'));
     expect(result.content[0].text).toContain('✅');
     expect(result.content[0].text).toContain('hello world');
   });
 
-  it('should execute python script via runPythonScript', async () => {
-    mockSandbox.runPythonScript.mockResolvedValue({
+  it('should execute python script', async () => {
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: '42',
       stderr: '',
@@ -62,13 +61,12 @@ describe('run_script tool', () => {
     });
 
     expect(writeFile).toHaveBeenCalled();
-    expect(mockSandbox.runPythonScript).toHaveBeenCalled();
-    expect(mockSandbox.runShell).not.toHaveBeenCalled();
+    expect(mockSandbox.run).toHaveBeenCalledWith(expect.stringContaining('temp_script'));
     expect(result.content[0].text).toContain('42');
   });
 
   it('should handle script errors', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 1,
       stdout: '',
       stderr: 'script error: command not found',
@@ -86,7 +84,7 @@ describe('run_script tool', () => {
   });
 
   it('should clean up temp script file after execution', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: 'test',
       stderr: '',
@@ -101,7 +99,7 @@ describe('run_script tool', () => {
   });
 
   it('should handle cleanup errors gracefully', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: 'test',
       stderr: '',
@@ -148,7 +146,7 @@ describe('run_script tool', () => {
   });
 
   it('should include stdout in success response', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: 'line 1\nline 2',
       stderr: '',
@@ -165,7 +163,7 @@ describe('run_script tool', () => {
   });
 
   it('should include both stdout and stderr in error response', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 2,
       stdout: 'before error',
       stderr: 'error occurred',
@@ -183,7 +181,7 @@ describe('run_script tool', () => {
   });
 
   it('should handle empty script content', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: '',
       stderr: '',
@@ -198,7 +196,7 @@ describe('run_script tool', () => {
   });
 
   it('should handle multi-line shell scripts', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: 'done',
       stderr: '',
@@ -213,7 +211,7 @@ describe('run_script tool', () => {
   });
 
   it('should generate unique temp script filenames', async () => {
-    mockSandbox.runShell.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: 'test',
       stderr: '',

@@ -1,69 +1,62 @@
 /**
- * Executor — the dispatch engine.
+ * Executor — the unified execution engine.
  *
  * Responsibility:
- *   1. Create and configure WasmRuntime and specific Runtimes
+ *   1. Create and configure WasmRuntime
  *   2. Validate ExecutionRequest against SecurityPolicy
- *   3. Route the request to the correct Runtime
+ *   3. Execute commands via the sandbox WASM runtime
  *   4. Return the ExecResult
  *
- * This is the single entry point for all execution requests.
+ * All commands are executed through the WASM sandbox shell.
+ * This includes shell commands, python scripts, and git operations.
  */
 
 import type { ExecutionRequest, ExecResult, ExecutorConfig } from './types.js';
 import { SecurityPolicy } from './security-policy.js';
 import { SandboxDirectory } from './sandbox-dir.js';
 import { WasmRuntime } from './wasm-runtime.js';
-import { BusyboxRuntime } from './busybox-runtime.js';
-import { WshRuntime } from './wsh-runtime.js';
-import { PythonRuntime } from './python-runtime.js';
 
 export class Executor {
   private security: SecurityPolicy;
   private sandboxDir: SandboxDirectory;
-  private busybox: BusyboxRuntime;
-  private sh: WshRuntime;
-  private python: PythonRuntime;
+  private wasm: WasmRuntime;
+  private busyboxPath: string;
 
   constructor(config: ExecutorConfig) {
     this.security = new SecurityPolicy(config.commandPolicy);
     this.sandboxDir = new SandboxDirectory({ path: config.sandboxDir });
 
-    // Base wasmtime config (no extra dirs)
-    const baseWasm = new WasmRuntime({
+    this.wasm = new WasmRuntime({
       wasmtimePath: config.wasmtimePath,
       sandboxDir: this.sandboxDir.path,
       timeout: config.timeout,
       allowNetwork: config.allowNetwork,
+      // /tmp isolation is handled by WasmRuntime.spawn() per-instance
     });
 
-    // wsh needs /tmp for pipe temp files
-    const wshWasm = new WasmRuntime({
-      wasmtimePath: config.wasmtimePath,
-      sandboxDir: this.sandboxDir.path,
-      timeout: config.timeout,
-      allowNetwork: config.allowNetwork,
-      extraDirs: ['/tmp'],
-    });
-
-    this.busybox = new BusyboxRuntime(baseWasm, config.busyboxPath);
-    this.sh = new WshRuntime(wshWasm, config.busyboxPath);
-    this.python = new PythonRuntime(baseWasm, config.micropythonPath);
+    this.busyboxPath = config.busyboxPath;
   }
 
   async exec(request: ExecutionRequest): Promise<ExecResult> {
     this.security.validate(request);
 
-    switch (request.runtime) {
-      case 'busybox':
-        return this.busybox.exec(request.argv);
-      case 'sh':
-        return this.sh.exec(request.argv);
-      case 'python':
-        return this.python.exec(request.argv);
-      default:
-        throw new Error(`Unknown runtime: ${(request as any).runtime}`);
-    }
+    const command = request.command.trim();
+
+    const raw = await this.wasm.spawn(this.busyboxPath, [
+      'wsh',
+      '-c',
+      `cd /workspace && ${command}`,
+    ]);
+
+    // wsh pipe output goes to stderr (freopen cannot restore stdout)
+    // merge stderr into stdout to match expected behavior
+    const stdout = raw.stderr ? raw.stdout + '\n' + raw.stderr : raw.stdout;
+
+    return {
+      stdout,
+      stderr: '',
+      exitCode: raw.exitCode,
+    };
   }
 
   get sandboxDirectory(): string {

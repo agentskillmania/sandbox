@@ -23,7 +23,7 @@ describe('Network Integration Tests', () => {
       });
 
       // wget should fail without network permission
-      const result = await sandbox.runShell('wget', ['-q', '-O', '-', 'http://example.com/']);
+      const result = await sandbox.run('wget -q -O - http://example.com/');
       console.log('Exit code:', result.exitCode);
       console.log('STDERR:', result.stderr);
 
@@ -44,7 +44,7 @@ describe('Network Integration Tests', () => {
       });
 
       // Try to download from example.com
-      const result = await sandbox.runShell('wget', ['-q', '-O', '-', 'http://example.com/']);
+      const result = await sandbox.run('wget -q -O - http://example.com/');
       console.log('Exit code:', result.exitCode);
       console.log('STDOUT length:', result.stdout.length);
 
@@ -73,7 +73,7 @@ describe('Network Integration Tests', () => {
       });
 
       // Use nslookup to test DNS
-      const result = await sandbox.runShell('nslookup', ['example.com']);
+      const result = await sandbox.run('nslookup example.com');
       console.log('Exit code:', result.exitCode);
       console.log('STDOUT:', result.stdout);
 
@@ -101,12 +101,9 @@ describe('Network Integration Tests', () => {
       });
 
       // Try to download from www.baidu.com (more reliable in China network)
-      const result = await sandbox.runShell('wget', [
-        '-q',
-        '-O',
-        '.sandbox-test-network/download.txt',
-        'http://www.baidu.com/',
-      ]);
+      const result = await sandbox.run(
+        'wget -q -O .sandbox-test-network/download.txt http://www.baidu.com/'
+      );
 
       console.log('Exit code:', result.exitCode);
       console.log('STDERR:', result.stderr);
@@ -133,12 +130,7 @@ describe('Network Integration Tests', () => {
       });
 
       // Try to download from invalid domain
-      const result = await sandbox.runShell('wget', [
-        '-q',
-        '-O',
-        '-',
-        'http://this-domain-does-not-exist-12345.com/',
-      ]);
+      const result = await sandbox.run('wget -q -O - http://this-domain-does-not-exist-12345.com/');
 
       console.log('Exit code:', result.exitCode);
 
@@ -156,12 +148,9 @@ describe('Network Integration Tests', () => {
       });
 
       // Test if socket module is available
-      const result = await sandbox.runPython(`
-import socket
-print('Socket module available')
-print('AF_INET:', socket.AF_INET)
-print('SOCK_STREAM:', socket.SOCK_STREAM)
-`);
+      const result = await sandbox.run(
+        'python -c \'import socket; print("Socket module available"); print("AF_INET:", socket.AF_INET); print("SOCK_STREAM:", socket.SOCK_STREAM)\''
+      );
 
       console.log('Exit code:', result.exitCode);
       console.log('STDOUT:', result.stdout);
@@ -178,14 +167,9 @@ print('SOCK_STREAM:', socket.SOCK_STREAM)
       });
 
       // Test socket creation
-      const result = await sandbox.runPython(`
-import socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-print('Socket created:', s)
-print('File descriptor:', s.fileno())
-s.close()
-print('Socket closed successfully')
-`);
+      const result = await sandbox.run(
+        'python -c \'import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); print("Socket created:", s); print("File descriptor:", s.fileno()); s.close(); print("Socket closed successfully")\''
+      );
 
       console.log('Exit code:', result.exitCode);
       console.log('STDOUT:', result.stdout);

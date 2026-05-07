@@ -8,8 +8,7 @@ MCP (Model Context Protocol) 服务器，用于在安全的 WASM 沙箱中执行
 - ⚡ **快速执行**：使用 wasmtime 运行时，平均执行时间 ~12ms
 - 🛠️ **丰富的工具集**：7 个工具，涵盖 Shell、Python、脚本和文件操作
 - 🔧 **环境变量配置**：通过环境变量配置，无需配置文件
-- 🌐 **网络控制**：可选网络访问，支持域名白名单/黑名单
-- 📝 **安全策略**：支持命令和网络的允许列表/阻止列表
+- 🌐 **网络控制**：可选网络访问，开关控制
 
 ## 安装
 
@@ -21,12 +20,12 @@ npm install @agentskillmania/sandbox-mcp
 
 ### Shell 执行
 
-- `run_shell` - 使用 busybox 执行 Shell 命令
+- `run_shell` - 在 WASM 沙箱中执行 Shell 命令
 - `run_script` - 从内容执行 Shell/Python 脚本
 
 ### Python 执行
 
-- `run_python` - 使用 micropython 执行 Python 代码字符串
+- `run_python` - 执行 Python 代码字符串
 
 ### 文件操作
 
@@ -45,13 +44,8 @@ export SANDBOX_TIMEOUT=5000
 export SANDBOX_ALLOW_NETWORK=false
 export SANDBOX_SANDBOX_DIR=".sandbox-mcp"
 
-# 安全策略
-export SANDBOX_COMMAND_MODE=whitelist
-export SANDBOX_COMMAND_LIST=ls,cat,echo
-
-# 网络策略
-export SANDBOX_NETWORK_MODE=blacklist
-export SANDBOX_NETWORK_LIST=example.com,dangerous.site
+# 注意：WASI preview2 不支持域名级别网络过滤。
+# 网络访问仅由 SANDBOX_ALLOW_NETWORK 开关控制。
 ```
 
 ## 在 Claude Desktop 中使用
@@ -61,7 +55,7 @@ export SANDBOX_NETWORK_LIST=example.com,dangerous.site
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-### 推荐：npx 方式（自动安装）
+### 推荐：npx（自动安装）
 
 ```json
 {
@@ -78,7 +72,7 @@ export SANDBOX_NETWORK_LIST=example.com,dangerous.site
 }
 ```
 
-### 备选：直接 node 方式（本地开发）
+### 替代：直接 node（本地开发）
 
 ```json
 {
@@ -95,7 +89,7 @@ export SANDBOX_NETWORK_LIST=example.com,dangerous.site
 }
 ```
 
-## 工具模式
+## 工具 Schema
 
 ### run_shell
 
@@ -103,8 +97,7 @@ export SANDBOX_NETWORK_LIST=example.com,dangerous.site
 
 ```json
 {
-  "command": "ls",
-  "args": ["-la"],
+  "command": "ls -la",
   "timeout": 5000,
   "allowNetwork": false
 }
@@ -135,7 +128,7 @@ export SANDBOX_NETWORK_LIST=example.com,dangerous.site
 
 ### read_file
 
-从沙箱目录读取文件。
+读取沙箱目录中的文件。
 
 ```json
 {
@@ -174,35 +167,34 @@ export SANDBOX_NETWORK_LIST=example.com,dangerous.site
 }
 ```
 
-## 安全性
+## 安全
 
 ### 文件系统隔离
 
-- 所有操作限制在沙箱目录（默认：`.sandbox-mcp`）
-- 无法访问父目录或系统文件
-- 临时脚本在执行后自动删除
+- 所有操作限制在沙箱目录内（默认：`.sandbox-mcp`）
+- 在 WASM 进程中映射为 `/workspace`
+- 无法访问父目录或系统文件（`../` 被 wasmtime 阻止）
+- 临时脚本执行后自动删除
 
 ### 命令安全
 
-- 白名单模式：仅允许指定的命令
-- 黑名单模式：阻止危险命令
-- 默认：允许所有命令（生产环境建议配置）
+命令过滤当前是**占位符**，未来可能扩展。真正的安全边界是 wasmtime 的文件系统隔离。
 
 ### 网络安全
 
-- 默认禁用以获得最大安全性
-- 通过 `SANDBOX_ALLOW_NETWORK=true` 启用
-- 可根据需要白名单/黑名单特定域名
+- 默认禁用，确保安全
+- 使用 `SANDBOX_ALLOW_NETWORK=true` 启用
+- WASI preview2 不支持域名级别过滤；网络要么全开，要么全关
 
 ## 性能
 
 典型执行时间：
 
 - 简单 Shell 命令：~12ms
-- Python print 语句：~15ms
+- Python 打印语句：~15ms
 - 冷启动（首次执行）：~47ms
 
-## 系统要求
+## 要求
 
 - Node.js >= 16.0.0
 - wasmtime 43.0.0（自动安装）

@@ -8,7 +8,21 @@ vi.mock('node:child_process', () => ({
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => true),
+  mkdirSync: vi.fn(),
   mkdtempSync: vi.fn((prefix: string) => prefix + '12345'),
+  rmSync: vi.fn(),
+}));
+
+vi.mock('node:crypto', () => ({
+  randomUUID: vi.fn(() => 'test-uuid'),
+}));
+
+vi.mock('node:os', () => ({
+  tmpdir: vi.fn(() => '/tmp'),
+}));
+
+vi.mock('node:path', () => ({
+  join: vi.fn((...parts: string[]) => parts.join('/')),
 }));
 
 describe('Executor', () => {
@@ -28,105 +42,88 @@ describe('Executor', () => {
     });
   });
 
-  it('should route busybox request to busybox runtime', async () => {
+  it('should execute command via wsh', async () => {
     const executor = new Executor({
       wasmtimePath: '/mock/wasmtime',
       busyboxPath: '/mock/busybox.wasm',
-      micropythonPath: '/mock/micropython.wasm',
       sandboxDir: 'auto',
       timeout: 5000,
       allowNetwork: false,
     });
 
-    await executor.exec({ runtime: 'busybox', argv: ['ls', '-la'] });
-
-    const args = mockSpawn.mock.calls[0][1];
-    const moduleIdx = args.indexOf('/mock/busybox.wasm');
-    expect(args[moduleIdx + 1]).toBe('ls');
-    expect(args[moduleIdx + 2]).toBe('-la');
-  });
-
-  it('should route sh request with wsh prefix', async () => {
-    const executor = new Executor({
-      wasmtimePath: '/mock/wasmtime',
-      busyboxPath: '/mock/busybox.wasm',
-      micropythonPath: '/mock/micropython.wasm',
-      sandboxDir: 'auto',
-      timeout: 5000,
-      allowNetwork: false,
-    });
-
-    await executor.exec({ runtime: 'sh', argv: ['-c', 'echo hello'] });
+    await executor.exec({ command: 'ls -la' });
 
     const args = mockSpawn.mock.calls[0][1];
     const moduleIdx = args.indexOf('/mock/busybox.wasm');
     expect(args[moduleIdx + 1]).toBe('wsh');
     expect(args[moduleIdx + 2]).toBe('-c');
-    expect(args[moduleIdx + 3]).toBe('echo hello');
+    expect(args[moduleIdx + 3]).toBe('cd /workspace && ls -la');
   });
 
-  it('should route python request', async () => {
+  it('should execute python command via wsh', async () => {
     const executor = new Executor({
       wasmtimePath: '/mock/wasmtime',
       busyboxPath: '/mock/busybox.wasm',
-      micropythonPath: '/mock/micropython.wasm',
       sandboxDir: 'auto',
       timeout: 5000,
       allowNetwork: false,
     });
 
-    await executor.exec({ runtime: 'python', argv: ['print(42)'] });
+    await executor.exec({ command: "python -c 'print(42)'" });
 
     const args = mockSpawn.mock.calls[0][1];
-    const moduleIdx = args.indexOf('/mock/micropython.wasm');
-    expect(args[moduleIdx + 1]).toBe('print(42)');
+    const moduleIdx = args.indexOf('/mock/busybox.wasm');
+    expect(args[moduleIdx + 1]).toBe('wsh');
+    expect(args[moduleIdx + 2]).toBe('-c');
+    expect(args[moduleIdx + 3]).toBe("cd /workspace && python -c 'print(42)'");
   });
 
-  it('should include /tmp dir for sh', async () => {
+  it('should execute git command via wsh', async () => {
     const executor = new Executor({
       wasmtimePath: '/mock/wasmtime',
       busyboxPath: '/mock/busybox.wasm',
-      micropythonPath: '/mock/micropython.wasm',
       sandboxDir: 'auto',
       timeout: 5000,
       allowNetwork: false,
     });
 
-    await executor.exec({ runtime: 'sh', argv: ['-c', 'echo hello'] });
+    await executor.exec({ command: 'git status' });
 
     const args = mockSpawn.mock.calls[0][1];
-    expect(args).toContain('/tmp');
+    const moduleIdx = args.indexOf('/mock/busybox.wasm');
+    expect(args[moduleIdx + 1]).toBe('wsh');
+    expect(args[moduleIdx + 2]).toBe('-c');
+    expect(args[moduleIdx + 3]).toBe('cd /workspace && git status');
   });
 
-  it('should NOT include /tmp dir for busybox', async () => {
+  it('should include /tmp dir for all commands', async () => {
     const executor = new Executor({
       wasmtimePath: '/mock/wasmtime',
       busyboxPath: '/mock/busybox.wasm',
-      micropythonPath: '/mock/micropython.wasm',
       sandboxDir: 'auto',
       timeout: 5000,
       allowNetwork: false,
     });
 
-    await executor.exec({ runtime: 'busybox', argv: ['ls'] });
+    await executor.exec({ command: 'ls' });
 
     const args = mockSpawn.mock.calls[0][1];
-    expect(args).not.toContain('/tmp');
+    // /tmp is now mapped via an isolated per-instance directory
+    expect(args.some((a: string) => a.includes('::/tmp'))).toBe(true);
   });
 
-  it('should enforce command policy', async () => {
+  it('should allow all commands regardless of command policy', async () => {
     const executor = new Executor({
       wasmtimePath: '/mock/wasmtime',
       busyboxPath: '/mock/busybox.wasm',
-      micropythonPath: '/mock/micropython.wasm',
       sandboxDir: 'auto',
       timeout: 5000,
       allowNetwork: false,
       commandPolicy: { mode: 'whitelist', list: ['ls'] },
     });
 
-    await expect(executor.exec({ runtime: 'busybox', argv: ['rm', 'file'] })).rejects.toThrow(
-      'not in the allowlist'
-    );
+    // SecurityPolicy is currently a no-op; all commands are allowed.
+    const result = await executor.exec({ command: 'rm file' });
+    expect(result.exitCode).toBe(0);
   });
 });

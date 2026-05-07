@@ -12,7 +12,10 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { ExecResult } from './types.js';
 import { TimeoutError } from '../types.js';
 
@@ -46,6 +49,20 @@ export class WasmRuntime {
         return;
       }
 
+      // Create an isolated temp directory for this wasmtime instance.
+      // wsh uses fixed paths like /tmp/_wsh_p_0 for pipe temp files;
+      // without isolation, concurrent instances overwrite each other.
+      const tmpDir = join(tmpdir(), `sandbox-tmp-${randomUUID()}`);
+      mkdirSync(tmpDir, { recursive: true });
+
+      const cleanup = () => {
+        try {
+          rmSync(tmpDir, { recursive: true, force: true });
+        } catch {
+          // ignore cleanup errors
+        }
+      };
+
       const extraDirArgs = (this.config.extraDirs ?? []).flatMap((dir) => ['--dir', dir]);
 
       const wasmtimeArgs = [
@@ -54,7 +71,9 @@ export class WasmRuntime {
         '-S',
         'cli=y',
         '--dir',
-        sandboxDir,
+        `${sandboxDir}::/workspace`,
+        '--dir',
+        `${tmpDir}::/tmp`,
         ...extraDirArgs,
         ...this._buildNetworkArgs(allowNetwork),
         modulePath,
@@ -82,12 +101,14 @@ export class WasmRuntime {
 
       proc.on('close', (code) => {
         clearTimeout(timer);
+        cleanup();
         if (timedOut) return;
         resolve({ stdout, stderr, exitCode: code ?? 0 });
       });
 
       proc.on('error', (error) => {
         clearTimeout(timer);
+        cleanup();
         reject(error);
       });
     });

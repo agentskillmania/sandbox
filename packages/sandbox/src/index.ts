@@ -1,8 +1,9 @@
 /**
  * @agentskillmania/sandbox
  *
- * Lightweight WASM sandbox execution environment - supports Shell commands and Python code
- * Based on WASM/WASI technology, provides fast startup and low resource usage execution environment
+ * Lightweight WASM sandbox execution environment.
+ * Supports shell commands, Python, Git, and other tools through the
+ * sandbox WASM runtime.
  */
 
 export { Sandbox } from './lib/Sandbox.js';

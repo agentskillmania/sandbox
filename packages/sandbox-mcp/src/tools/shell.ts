@@ -8,27 +8,23 @@ import { Sandbox } from '@agentskillmania/sandbox';
 export const runShellTool = {
   definition: {
     name: 'run_shell',
-    description: 'Execute shell commands in a WASM sandbox with busybox',
+    description:
+      'Execute shell commands in a WASM sandbox with busybox wsh. Supports any command available inside the combined busybox component including git, python, ls, cat, grep, etc.',
     inputSchema: {
       type: 'object',
       properties: {
         command: {
           type: 'string',
-          description: 'Shell command to execute (e.g., "ls", "cat", "grep")',
-        },
-        args: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Command arguments',
+          description:
+            'Shell command to execute (e.g., "ls -la", "python -c \'print(42)\'", "git status")',
         },
       },
       required: ['command'],
     },
   },
 
-  async handler(sandbox: Sandbox, args: { command: string; args?: string[] }) {
-    const { command, args: cmdArgs = [] } = args;
-    const result = await sandbox.runShell(command, cmdArgs);
+  async handler(sandbox: Sandbox, args: { command: string }) {
+    const result = await sandbox.run(args.command);
 
     return {
       content: [

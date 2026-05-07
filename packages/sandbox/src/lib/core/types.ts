@@ -15,16 +15,13 @@ export interface ExecResult {
 }
 
 /**
- * Strongly-typed execution request.
+ * Execution request — a single shell command string.
  *
- * The `argv` array is passed **verbatim** to the WASM module.
- * The Executor does NOT parse, modify, or interpret argv.
+ * The command is executed inside the sandbox WASM runtime.
  */
 export interface ExecutionRequest {
-  /** Which runtime to use */
-  runtime: 'busybox' | 'sh' | 'python';
-  /** Arguments passed verbatim to the WASM module */
-  argv: string[];
+  /** Shell command string to execute */
+  command: string;
 }
 
 /**
@@ -35,8 +32,6 @@ export interface ExecutorConfig {
   wasmtimePath: string;
   /** Path to busybox.wasm */
   busyboxPath: string;
-  /** Path to micropython.wasm */
-  micropythonPath: string;
   /** Sandbox directory path (absolute) */
   sandboxDir: string;
   /** Execution timeout in milliseconds */
@@ -53,14 +48,4 @@ export interface ExecutorConfig {
 export interface CommandPolicyConfig {
   mode: 'whitelist' | 'blacklist';
   list: string[];
-}
-
-/**
- * Runtime adapter interface.
- *
- * Each runtime (busybox, sh, python) implements this interface.
- */
-export interface Runtime {
-  readonly name: string;
-  exec(argv: string[]): Promise<ExecResult>;
 }

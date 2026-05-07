@@ -9,6 +9,20 @@ vi.mock('node:child_process', () => ({
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => true),
+  mkdirSync: vi.fn(),
+  rmSync: vi.fn(),
+}));
+
+vi.mock('node:crypto', () => ({
+  randomUUID: vi.fn(() => 'test-uuid'),
+}));
+
+vi.mock('node:os', () => ({
+  tmpdir: vi.fn(() => '/tmp'),
+}));
+
+vi.mock('node:path', () => ({
+  join: vi.fn((...parts: string[]) => parts.join('/')),
 }));
 
 describe('WasmRuntime', () => {
@@ -40,7 +54,7 @@ describe('WasmRuntime', () => {
     expect(args[moduleIndex + 2]).toBe('-la');
   });
 
-  it('should include --list as a positional argument', async () => {
+  it('should include positional arguments after module path', async () => {
     const wasm = new WasmRuntime({
       wasmtimePath: '/mock/wasmtime',
       sandboxDir: '/mock/sandbox',
@@ -48,11 +62,11 @@ describe('WasmRuntime', () => {
       allowNetwork: false,
     });
 
-    await wasm.spawn('/mock/busybox.wasm', ['--list']);
+    await wasm.spawn('/mock/busybox.wasm', ['--version']);
 
     const args = mockSpawn.mock.calls[0][1];
     const moduleIndex = args.indexOf('/mock/busybox.wasm');
-    expect(args[moduleIndex + 1]).toBe('--list');
+    expect(args[moduleIndex + 1]).toBe('--version');
   });
 
   it('should include -c as a positional argument', async () => {
@@ -99,7 +113,7 @@ describe('WasmRuntime', () => {
     await wasm.spawn('/mock/busybox.wasm', ['echo', 'test']);
 
     const args = mockSpawn.mock.calls[0][1];
-    const sandboxIdx = args.indexOf('/mock/sandbox');
+    const sandboxIdx = args.indexOf('/mock/sandbox::/workspace');
     const tmpIdx = args.indexOf('/tmp');
     const moduleIdx = args.indexOf('/mock/busybox.wasm');
 

@@ -39,8 +39,7 @@ export function checkInstalledWasmtime(): {
 }
 
 /**
- * Get WASM module paths
- * These are relative to the current working directory
+ * Get WASM module path
  */
 export function getWasmPaths() {
   const candidates = [
@@ -51,18 +50,12 @@ export function getWasmPaths() {
   for (const dir of candidates) {
     const busybox = join(dir, 'busybox.wasm');
     if (existsSync(busybox)) {
-      return {
-        busybox,
-        micropython: join(dir, 'micropython.wasm'),
-      };
+      return { busybox };
     }
   }
 
   // fallback to first candidate
-  return {
-    busybox: join(candidates[0], 'busybox.wasm'),
-    micropython: join(candidates[0], 'micropython.wasm'),
-  };
+  return { busybox: join(candidates[0], 'busybox.wasm') };
 }
 
 /**
@@ -82,10 +75,6 @@ export function getRuntimeVersions() {
     busybox: {
       found: existsSync(wasmPaths.busybox),
       path: wasmPaths.busybox,
-    },
-    micropython: {
-      found: existsSync(wasmPaths.micropython),
-      path: wasmPaths.micropython,
     },
   };
 }

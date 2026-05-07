@@ -27,77 +27,70 @@ describe('CLI Integration Tests', () => {
     it('should show version', () => {
       const { stdout } = runCli(['version']);
       expect(stdout).toContain('@agentskillmania/sandbox');
-      expect(stdout).toContain('0.2.0');
+      expect(stdout).toMatch(/\d+\.\d+\.\d+/);
       expect(stdout).toContain('Runtimes');
     });
   });
 
-  describe('busybox execution', () => {
-    it('should pass -la to busybox ls', () => {
-      const { stdout, stderr } = runCli(['--sandbox-dir=.', '--', 'busybox', 'ls', '-la']);
+  describe('command execution', () => {
+    it('should execute ls -la', () => {
+      const { stdout, stderr } = runCli(['--sandbox-dir=.', '--', 'ls -la']);
       const combined = stdout + stderr;
       expect(combined).toContain('total');
     });
 
-    it('should pass --list to busybox', () => {
-      const { stderr } = runCli(['--', 'busybox', '--list']);
-      expect(stderr).toContain('ls');
-      expect(stderr).toContain('cat');
-    });
-
-    it('should pass -n to echo', () => {
-      const { stdout } = runCli(['--', 'busybox', 'echo', '-n', 'hello']);
+    it('should execute echo -n hello', () => {
+      const { stdout } = runCli(['--', 'echo -n hello']);
       expect(stdout.trim()).toBe('hello');
     });
-  });
 
-  describe('wsh execution', () => {
-    it('should execute wsh -c echo hello', () => {
-      const { stdout } = runCli(['--', 'wsh', '-c', 'echo hello']);
+    it('should execute echo hello', () => {
+      const { stdout } = runCli(['--', 'echo hello']);
       expect(stdout.trim()).toBe('hello');
     });
 
     it('should execute arithmetic expression', () => {
-      const { stdout } = runCli(['--', 'wsh', '-c', 'X=10; Y=20; echo $((X + Y))']);
+      const { stdout } = runCli(['--', 'X=10; Y=20; echo $((X + Y))']);
       expect(stdout.trim()).toBe('30');
     });
 
-    it('should handle comments in wsh script', () => {
-      const { stdout } = runCli(['--', 'wsh', '-c', '# comment\nX=5\necho $X']);
+    it('should handle comments in script', () => {
+      const { stdout } = runCli(['--', '# comment\nX=5\necho $X']);
       expect(stdout.trim()).toBe('5');
     });
   });
 
   describe('micropython execution', () => {
     it('should execute python -c print', () => {
-      const { stdout } = runCli(['--', 'micropython', '-c', 'print(42)']);
+      const { stdout } = runCli(['--', "python -c 'print(42)'"]);
       expect(stdout.trim()).toBe('42');
     });
   });
 
   describe('CLI options', () => {
     it('should accept timeout option', () => {
-      const { stdout } = runCli(['--timeout=1000', '--', 'busybox', 'echo', 'test']);
+      const { stdout } = runCli(['--timeout=1000', '--', 'echo test']);
       expect(stdout.trim()).toBe('test');
     });
 
     it('should accept sandbox-dir option', () => {
-      const { stdout } = runCli(['--sandbox-dir=.', '--', 'busybox', 'echo', 'test']);
+      const { stdout } = runCli(['--sandbox-dir=.', '--', 'echo test']);
       expect(stdout.trim()).toBe('test');
     });
   });
 
   describe('error handling', () => {
-    it('should error when no runtime is given', () => {
+    it('should error when no command is given', () => {
       const { stderr, exitCode } = runCli([]);
       expect(exitCode).not.toBe(0);
-      expect(stderr).toContain('No runtime specified');
+      expect(stderr).toContain('No command specified');
     });
 
-    it('should error for unknown runtime', () => {
-      const { stderr, exitCode } = runCli(['--', 'unknown-runtime']);
+    it('should error for unknown command', () => {
+      const { stdout, stderr, exitCode } = runCli(['--', 'unknown-runtime']);
       expect(exitCode).not.toBe(0);
-      expect(stderr).toContain('Unknown runtime');
+      const combined = stdout + stderr;
+      expect(combined).toContain('applet not found');
     });
   });
 });

@@ -41,10 +41,7 @@ export const runScriptTool = {
     try {
       await writeFile(scriptPath, content, 'utf-8');
 
-      const result =
-        language === 'sh'
-          ? await sandbox.runShell(scriptPath, [])
-          : await sandbox.runPythonScript(scriptPath, []);
+      const result = await sandbox.run(scriptPath);
 
       return {
         content: [
