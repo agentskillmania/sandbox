@@ -4,10 +4,11 @@ import { Executor } from '../../../../src/lib/core/executor.js';
 const mockSpawn = vi.fn();
 vi.mock('node:child_process', () => ({
   spawn: (...args: any[]) => mockSpawn(...args),
+  execSync: vi.fn(() => { throw new Error('mock: no wasmtime'); }),
 }));
 
 vi.mock('node:fs', () => ({
-  existsSync: vi.fn(() => true),
+  existsSync: vi.fn((p: string) => !p.endsWith('.cwasm')),
   mkdirSync: vi.fn(),
   mkdtempSync: vi.fn((prefix: string) => prefix + '12345'),
   rmSync: vi.fn(),
@@ -125,5 +126,49 @@ describe('Executor', () => {
     // SecurityPolicy is currently a no-op; all commands are allowed.
     const result = await executor.exec({ command: 'rm file' });
     expect(result.exitCode).toBe(0);
+  });
+
+  it('should expose sandbox directory path', () => {
+    const executor = new Executor({
+      wasmtimePath: '/mock/wasmtime',
+      busyboxPath: '/mock/busybox.wasm',
+      sandboxDir: '/custom/sandbox',
+      timeout: 5000,
+      allowNetwork: false,
+    });
+
+    expect(executor.sandboxDirectory).toBe('/custom/sandbox');
+  });
+
+  it('should merge stderr into stdout when stderr present', async () => {
+    mockSpawn.mockReturnValue({
+      stdout: {
+        on: vi.fn((e, cb) => {
+          if (e === 'data') cb(Buffer.from('stdout output'));
+        }),
+      },
+      stderr: {
+        on: vi.fn((e, cb) => {
+          if (e === 'data') cb(Buffer.from('stderr output'));
+        }),
+      },
+      on: vi.fn((event, callback) => {
+        if (event === 'close') setImmediate(() => callback(0));
+      }),
+      kill: vi.fn(),
+    });
+
+    const executor = new Executor({
+      wasmtimePath: '/mock/wasmtime',
+      busyboxPath: '/mock/busybox.wasm',
+      sandboxDir: 'auto',
+      timeout: 5000,
+      allowNetwork: false,
+    });
+
+    const result = await executor.exec({ command: 'echo test' });
+    expect(result.stdout).toContain('stdout output');
+    expect(result.stdout).toContain('stderr output');
+    expect(result.stderr).toBe('');
   });
 });

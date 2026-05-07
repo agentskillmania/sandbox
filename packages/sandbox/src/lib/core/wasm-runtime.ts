@@ -11,7 +11,7 @@
  * The `argv` parameter is passed VERBATIM after the module path.
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -49,6 +49,25 @@ export class WasmRuntime {
         return;
       }
 
+      // Ensure AOT precompiled module exists (compile on-demand if missing)
+      let modulePathToRun = modulePath;
+      if (!modulePath.endsWith('.cwasm')) {
+        const cwasmPath = modulePath.replace(/\.wasm$/, '.cwasm');
+        if (!existsSync(cwasmPath)) {
+          try {
+            execSync(
+              `"${wasmtimePath}" compile -W exceptions=y "${modulePath}" -o "${cwasmPath}"`,
+              { encoding: 'utf-8', stdio: 'ignore' }
+            );
+            modulePathToRun = cwasmPath;
+          } catch {
+            // compilation failed, fall back to JIT
+          }
+        } else {
+          modulePathToRun = cwasmPath;
+        }
+      }
+
       // Create an isolated temp directory for this wasmtime instance.
       // wsh uses fixed paths like /tmp/_wsh_p_0 for pipe temp files;
       // without isolation, concurrent instances overwrite each other.
@@ -76,7 +95,8 @@ export class WasmRuntime {
         `${tmpDir}::/tmp`,
         ...extraDirArgs,
         ...this._buildNetworkArgs(allowNetwork),
-        modulePath,
+        ...(modulePathToRun.endsWith('.cwasm') ? ['--allow-precompiled'] : []),
+        modulePathToRun,
         ...argv,
       ];
 

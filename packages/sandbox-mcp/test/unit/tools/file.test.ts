@@ -86,6 +86,17 @@ describe('read_file tool', () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Path traversal');
   });
+
+  it('should handle sandbox dir ending with slash', async () => {
+    const slashSandbox = { getSandboxDir: () => '/' };
+    vi.mocked(readFile).mockResolvedValue('content');
+
+    const result = await readFileTool.handler(slashSandbox, {
+      path: 'test.txt',
+    });
+
+    expect(result.content[0].text).toContain('content');
+  });
 });
 
 describe('write_file tool', () => {
@@ -207,7 +218,15 @@ describe('list_files tool', () => {
     const result = await listFilesTool.handler(mockSandbox, {});
 
     expect(result.content[0].text).toContain('📁 Directory: .');
-    // 应该不显示任何文件
+  });
+
+  it('should show / as directory when path is empty string', async () => {
+    vi.mocked(readdir).mockResolvedValue(['a.txt'] as any);
+
+    const result = await listFilesTool.handler(mockSandbox, { path: '' });
+
+    expect(result.content[0].text).toContain('📁 Directory: /');
+    expect(result.content[0].text).toContain('a.txt');
   });
 
   it('should have correct tool definition', () => {

@@ -9,6 +9,11 @@ import { createMCPServer } from '../../src/server.js';
 // Mock Sandbox 类
 vi.mock('@agentskillmania/sandbox', () => ({
   Sandbox: vi.fn().mockImplementation(() => ({
+    run: vi.fn().mockResolvedValue({
+      exitCode: 0,
+      stdout: 'test output',
+      stderr: '',
+    }),
     runShell: vi.fn().mockResolvedValue({
       exitCode: 0,
       stdout: 'test output',
@@ -131,6 +136,10 @@ describe('MCP Server: environment config', () => {
 });
 
 describe('MCP Server: tool handlers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('should return tool list when requested', async () => {
     const { checkRuntimeReady } = await import('@agentskillmania/sandbox');
     vi.mocked(checkRuntimeReady).mockReturnValue({ ready: true });
@@ -146,8 +155,46 @@ describe('MCP Server: tool handlers', () => {
     vi.mocked(ensureRuntime).mockResolvedValue(undefined);
 
     const server = createMCPServer();
-    expect(server).toBeDefined();
-    // 服务器会在工具执行前检查运行时
+
+    // Trigger the CallTool handler with runtime not ready
+    const handler = (server as any)._requestHandlers.get('tools/call');
+    const result = await handler({
+      method: 'tools/call',
+      params: { name: 'run_shell', arguments: { command: 'echo test' } },
+    });
+
+    expect(vi.mocked(ensureRuntime)).toHaveBeenCalled();
+    expect(result).toBeDefined();
+  });
+
+  it('should skip ensureRuntime when runtime is ready', async () => {
+    const { checkRuntimeReady, ensureRuntime } = await import('@agentskillmania/sandbox');
+    vi.mocked(checkRuntimeReady).mockReturnValue({ ready: true });
+
+    const server = createMCPServer();
+
+    const handler = (server as any)._requestHandlers.get('tools/call');
+    await handler({
+      method: 'tools/call',
+      params: { name: 'run_shell', arguments: { command: 'echo test' } },
+    });
+
+    expect(vi.mocked(ensureRuntime)).not.toHaveBeenCalled();
+  });
+
+  it('should handle tool call with no arguments', async () => {
+    const { checkRuntimeReady } = await import('@agentskillmania/sandbox');
+    vi.mocked(checkRuntimeReady).mockReturnValue({ ready: true });
+
+    const server = createMCPServer();
+
+    const handler = (server as any)._requestHandlers.get('tools/call');
+    const result = await handler({
+      method: 'tools/call',
+      params: { name: 'list_files', arguments: undefined },
+    });
+
+    expect(result).toBeDefined();
   });
 });
 

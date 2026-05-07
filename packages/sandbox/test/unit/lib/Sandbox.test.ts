@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Sandbox } from '../../../src/lib/Sandbox.js';
 import { SecurityError, TimeoutError } from '../../../src/lib/types.js';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdirp } from 'mkdirp';
 
 // Mock runtime functions
 vi.mock('../../../src/lib/runtime.js', async (importOriginal) => {
@@ -69,6 +70,8 @@ describe('Sandbox', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset default mock behaviors (clearAllMocks only clears history, not implementations)
+    vi.mocked(existsSync).mockReturnValue(true);
 
     mockSpawn.mockReturnValue({
       stdout: {
@@ -220,6 +223,124 @@ describe('Sandbox', () => {
       expect(versions).toHaveProperty('wasmtime');
       expect(versions).toHaveProperty('busybox');
       expect(versions).not.toHaveProperty('micropython');
+    });
+  });
+
+  describe('updateConfig', () => {
+    it('should update timeout and allowNetwork', async () => {
+      const sb = new Sandbox({ timeout: 5000, allowNetwork: false });
+      sb.updateConfig({ timeout: 10000, allowNetwork: true });
+
+      // Verify network args appear in spawn call
+      await sb.run('echo test');
+      const args = mockSpawn.mock.calls[0][1];
+      expect(args).toContain('tcp=y');
+      expect(args).toContain('inherit-network');
+    });
+  });
+
+  describe('getSandboxDir', () => {
+    it('should return sandbox directory path', () => {
+      const sb = new Sandbox({ sandboxDir: '/custom/dir' });
+      expect(sb.getSandboxDir()).toBe('/custom/dir');
+    });
+  });
+
+  describe('directory creation', () => {
+    it('should create sandbox directory when it does not exist', () => {
+      vi.mocked(existsSync).mockImplementation(
+        (p: string) => !p.startsWith('/custom')
+      );
+
+      new Sandbox({ sandboxDir: '/custom/newdir' });
+      expect(vi.mocked(mkdirp.sync)).toHaveBeenCalledWith('/custom/newdir');
+    });
+  });
+
+  describe('error handling - missing runtime', () => {
+    it('should reject when busybox not found', async () => {
+      vi.mocked(existsSync).mockImplementation(
+        (p: string) => p !== '/mock/busybox.wasm'
+      );
+
+      const sb = new Sandbox({ timeout: 5000 });
+      await expect(sb.run('echo test')).rejects.toThrow('WASM module not found');
+    });
+
+    it('should reject when wasmtime not found', async () => {
+      vi.mocked(existsSync).mockImplementation(
+        (p: string) => p !== '/mock/wasmtime'
+      );
+
+      const sb = new Sandbox({ timeout: 5000 });
+      await expect(sb.run('echo test')).rejects.toThrow('Wasmtime not found');
+    });
+  });
+
+  describe('stderr merging', () => {
+    it('should merge stderr into stdout when stderr present', async () => {
+      mockSpawn.mockReturnValue({
+        stdout: {
+          on: vi.fn((event, callback) => {
+            if (event === 'data') callback(Buffer.from('stdout text'));
+          }),
+        },
+        stderr: {
+          on: vi.fn((event, callback) => {
+            if (event === 'data') callback(Buffer.from('stderr text'));
+          }),
+        },
+        on: vi.fn((event, callback) => {
+          if (event === 'close') setImmediate(() => callback(0));
+        }),
+        kill: vi.fn(),
+      });
+
+      const result = await sandbox.run('echo test');
+      expect(result.stdout).toContain('stdout text');
+      expect(result.stdout).toContain('stderr text');
+      expect(result.stderr).toBe('');
+    });
+  });
+
+  describe('cleanup error handling', () => {
+    it('should handle rmSync failure gracefully', async () => {
+      vi.mocked(rmSync).mockImplementation(() => {
+        throw new Error('cleanup failed');
+      });
+
+      const result = await sandbox.run('echo test');
+      expect(result.exitCode).toBe(0);
+    });
+  });
+
+  describe('timeout edge case', () => {
+    it('should not resolve after timeout kill', async () => {
+      const sb = new Sandbox({ timeout: 50 });
+      let closeCallback: Function | undefined;
+
+      mockSpawn.mockReturnValue({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn((event, callback) => {
+          if (event === 'close') closeCallback = callback;
+        }),
+        kill: vi.fn(),
+      });
+
+      const promise = sb.run('sleep 10');
+      promise.catch(() => {});
+      await new Promise((r) => setTimeout(r, 100));
+      closeCallback!(0);
+
+      await expect(promise).rejects.toThrow(TimeoutError);
+    });
+  });
+
+  describe('command validation edge cases', () => {
+    it('should skip validation when command starts with --', async () => {
+      const result = await sandbox.run('--help');
+      expect(result.exitCode).toBe(0);
     });
   });
 });
