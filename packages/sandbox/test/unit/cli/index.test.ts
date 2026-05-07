@@ -50,56 +50,36 @@ describe('CLI: version command', () => {
   });
 });
 
-describe('CLI: busybox command', () => {
-  it('should execute simple command', () => {
-    const output = execCli(['--', 'busybox', 'echo', 'hello']);
+describe('CLI: command execution', () => {
+  it('should execute simple shell command', () => {
+    const output = execCli(['--', 'echo hello']);
     expect(output).toContain('hello');
   });
 
-  it('should execute multiple arguments', () => {
-    const output = execCli(['--', 'busybox', 'ls', '-la']);
+  it('should execute ls command', () => {
+    const output = execCli(['--', 'ls -la']);
     expect(output.length).toBeGreaterThan(0);
   });
 
-  it('should handle --list (if supported)', () => {
-    const output = execCli(['--', 'busybox', '--list']);
-    // --list 是 busybox.wasm 的特殊命令，检查是否返回内容
-    expect(output.length).toBeGreaterThan(0);
-  });
-
-  it('should handle --list-full (if supported)', () => {
-    const output = execCli(['--', 'busybox', '--list-full']);
-    // --list-full 是 busybox.wasm 的特殊命令，检查是否返回内容
-    expect(output.length).toBeGreaterThanOrEqual(0);
-  });
-});
-
-describe('CLI: python command', () => {
-  it('should execute Python code', () => {
-    const output = execCli(['--', 'python', '-c', 'print(42)']);
+  it('should execute python command', () => {
+    const output = execCli(['--', "python -c 'print(42)'"]);
     expect(output).toContain('42');
   });
 
-  it('should execute Python script', () => {
-    // 检查 test.py 是否存在，不存在则跳过
-    const testPyPath = join(process.cwd(), 'test.py');
-    if (!existsSync(testPyPath)) {
-      console.log('test.py not found, skipping test');
-      return;
-    }
-    const output = execCli(['--', 'python', 'test.py']);
-    expect(output).toContain('Hello from Python');
+  it('should execute git --version', () => {
+    const output = execCli(['--', 'git --version']);
+    expect(output).toContain('git');
   });
 });
 
 describe('CLI: global options', () => {
   it('should accept --timeout option', () => {
-    const output = execCli(['--timeout=1000', '--', 'busybox', 'echo', 'test']);
+    const output = execCli(['--timeout=1000', '--', 'echo test']);
     expect(output).toContain('test');
   });
 
   it('should accept --sandbox-dir option', () => {
-    const output = execCli(['--sandbox-dir=.test-cli', '--', 'busybox', 'echo', 'test']);
+    const output = execCli(['--sandbox-dir=.test-cli', '--', 'echo test']);
     expect(output).toContain('test');
   });
 
@@ -110,21 +90,20 @@ describe('CLI: global options', () => {
 });
 
 describe('CLI: error handling', () => {
-  it('should handle invalid subcommand', () => {
-    const output = execCli(['--', 'invalid-command']);
-    expect(output).toMatch(/error|unknown|invalid/);
+  it('should handle empty command', () => {
+    const output = execCli(['--']);
+    expect(output).toMatch(/error|No command/);
   });
 
   it('should handle missing busybox.wasm gracefully', () => {
-    // 这个测试在有 busybox.wasm 时会被跳过
     if (!existsSync(join(process.cwd(), 'wasm', 'busybox.wasm'))) {
-      const output = execCli(['--', 'busybox', 'ls']);
+      const output = execCli(['--', 'ls']);
       expect(output).toMatch(/not found|does not exist/);
     }
   });
 
   it('should handle command execution errors', () => {
-    const output = execCli(['--', 'busybox', 'invalid-command-that-does-not-exist-12345']);
+    const output = execCli(['--', 'invalid-command-that-does-not-exist-12345']);
     expect(output).toMatch(/error|failed|not found/);
   });
 });
@@ -133,7 +112,7 @@ describe('CLI: help information', () => {
   it('should show general help', () => {
     const output = execCli(['--help']);
     expect(output).toContain('exec-in-sandbox');
-    expect(output).toContain('unified WASM sandbox tool');
+    expect(output).toContain('unified WASM sandbox shell');
   });
 
   it('should show usage examples in help', () => {

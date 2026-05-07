@@ -74,7 +74,7 @@ describe('runtime', () => {
       vi.mocked(existsSync).mockReturnValue(true);
       const paths = getWasmPaths();
       expect(paths.busybox).toMatch(/wasm[/\\]busybox\.wasm$/);
-      expect(paths.micropython).toMatch(/wasm[/\\]micropython\.wasm$/);
+      expect(paths).not.toHaveProperty('micropython');
     });
   });
 
@@ -82,9 +82,7 @@ describe('runtime', () => {
     it('should return runtime version information', () => {
       vi.mocked(existsSync).mockImplementation((path) => {
         if (typeof path === 'string') {
-          return (
-            path.includes('wasmtime') || path.includes('busybox') || path.includes('micropython')
-          );
+          return path.includes('wasmtime') || path.includes('busybox');
         }
         return false;
       });
@@ -93,7 +91,7 @@ describe('runtime', () => {
       const versions = getRuntimeVersions();
       expect(versions).toHaveProperty('wasmtime');
       expect(versions).toHaveProperty('busybox');
-      expect(versions).toHaveProperty('micropython');
+      expect(versions).not.toHaveProperty('micropython');
       expect(versions.wasmtime.expectedVersion).toBe('v43.0.0');
     });
 
@@ -115,19 +113,6 @@ describe('runtime', () => {
 
       const versions = getRuntimeVersions();
       expect(versions.busybox.found).toBe(false);
-    });
-
-    it('should handle when micropython.wasm is not found', () => {
-      vi.mocked(existsSync).mockImplementation((path) => {
-        if (typeof path === 'string') {
-          return !path.includes('micropython');
-        }
-        return true;
-      });
-      vi.mocked(execSync).mockReturnValue('wasmtime 43.0.0\n');
-
-      const versions = getRuntimeVersions();
-      expect(versions.micropython.found).toBe(false);
     });
   });
 

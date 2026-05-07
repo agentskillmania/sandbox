@@ -1,6 +1,6 @@
 {
   "name": "@agentskillmania/sandbox",
-  "version": "0.2.4",
+  "version": "1.0.0",
   "description": "WASM sandbox for busybox and micropython",
   "type": "module",
   "publishConfig": {
@@ -26,7 +26,7 @@
     "dev": "vite build --watch",
     "test": "vitest",
     "test:unit": "vitest run test/unit",
-    "test:integration": "vitest run test/integration",
+    "test:integration": "vitest run test/integration --pool=forks",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",

@@ -43,7 +43,7 @@ describe('Performance Benchmark Tests', () => {
 
       const start = performance.now();
 
-      await sandbox.runShell('echo', ['test']);
+      await sandbox.run('echo test');
       const end = performance.now();
       const duration = end - start;
 
@@ -67,12 +67,12 @@ describe('Performance Benchmark Tests', () => {
       });
 
       // Warm up
-      await sandbox.runShell('echo', ['warmup']);
+      await sandbox.run('echo warmup');
 
       const times: number[] = [];
       for (let i = 0; i < 5; i++) {
         const start = performance.now();
-        await sandbox.runShell('echo', ['test']);
+        await sandbox.run('echo test');
         const end = performance.now();
         times.push(end - start);
       }
@@ -102,12 +102,12 @@ describe('Performance Benchmark Tests', () => {
       });
 
       // Warm up
-      await sandbox.runPython('print("warmup")');
+      await sandbox.run('python -c \'print("warmup")\'');
 
       const times: number[] = [];
       for (let i = 0; i < 5; i++) {
         const start = performance.now();
-        await sandbox.runPython('print("test")');
+        await sandbox.run('python -c \'print("test")\'');
         const end = performance.now();
         times.push(end - start);
       }
@@ -147,7 +147,7 @@ describe('Performance Benchmark Tests', () => {
 
       // Execute many commands
       for (let i = 0; i < 50; i++) {
-        await sandbox.runShell('echo', [`test-${i}`]);
+        await sandbox.run(`echo test-${i}`);
       }
 
       // Get final memory usage
@@ -183,7 +183,7 @@ describe('Performance Benchmark Tests', () => {
           sandboxDir: `.sandbox-test-perf-${i}`,
           timeout: 5000,
         });
-        promises.push(sandbox.runPython('print("test")'));
+        promises.push(sandbox.run('python -c \'print("test")\''));
       }
 
       await Promise.all(promises);
@@ -215,17 +215,17 @@ describe('Performance Benchmark Tests', () => {
 
       // Test echo command
       let start = performance.now();
-      await sandbox.runShell('echo', ['test']);
+      await sandbox.run('echo test');
       results['echo'] = performance.now() - start;
 
       // Test Python print
       start = performance.now();
-      await sandbox.runPython('print("test")');
+      await sandbox.run('python -c \'print("test")\'');
       results['python_print'] = performance.now() - start;
 
       // Test Python math
       start = performance.now();
-      await sandbox.runPython('x = sum(range(100)); print(x)');
+      await sandbox.run("python -c 'x = sum(range(100)); print(x)'");
       results['python_math'] = performance.now() - start;
 
       console.log('\n=== Performance Baseline ===');

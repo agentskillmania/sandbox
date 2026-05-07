@@ -35,34 +35,6 @@ export interface SandboxConfig {
 }
 
 /**
- * Module configuration interface
- */
-export interface ModuleConfig {
-  /** Whether module is enabled */
-  enabled: boolean;
-  /** WASM file path */
-  wasmPath: string;
-}
-
-/**
- * Busybox module configuration
- */
-export interface BusyboxConfig extends ModuleConfig {
-  /** Command filtering configuration */
-  commands?: {
-    /** Mode: whitelist or blacklist */
-    mode?: 'whitelist' | 'blacklist';
-    /** Command list */
-    list?: string[];
-  };
-}
-
-/**
- * Python module configuration
- */
-export interface PythonConfig extends ModuleConfig {}
-
-/**
  * Global security configuration (from ~/.agentskillmania/sandbox/config.yaml)
  * Only contains security policies, not execution parameters
  */
@@ -94,10 +66,6 @@ export interface RuntimeVersions {
     expectedVersion?: string;
   };
   busybox: {
-    found: boolean;
-    path: string;
-  };
-  micropython: {
     found: boolean;
     path: string;
   };

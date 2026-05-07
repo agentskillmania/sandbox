@@ -1,13 +1,13 @@
 # @agentskillmania/sandbox
 
-WASM 沙箱工具，支持 busybox、sh shell 和 python。
+用于在隔离环境中安全执行命令的 WASM 沙箱。
 
 ## 特性
 
 - 🚀 **轻量级**：单个 wasmtime 进程 ~3MB，vs Docker 的 ~1GB
 - ⚡ **执行快速**：平均命令执行时间 ~12ms，vs Docker 的 ~100ms
-- 🔒 **安全隔离**：WASM 沙箱，文件系统访问受控
-- 🛠️ **简单易用**：CLI 工具和 Node.js SDK
+- 🔒 **安全隔离**：通过 wasmtime `--dir` 映射实现文件系统隔离
+- 🛠️ **简单易用**：CLI 工具和 Node.js SDK，单一 `run(command)` 接口
 
 ## 安装
 
@@ -17,11 +17,7 @@ npm install -g @agentskillmania/sandbox
 
 ### 运行时自动安装
 
-安装 npm 包时，脚本会自动安装专用版本的 wasmtime：
-
-- 📦 自动下载 wasmtime 43.0.0（固定版本，确保兼容性）
-- 🔒 安装到 `~/.agentskillmania/sandbox/wasmtime/`（专用版本，不影响系统）
-- ✅ 不复用系统 wasmtime，避免版本冲突
+安装 npm 包时，会自动安装 wasmtime 43.0.0 到 `~/.agentskillmania/sandbox/wasmtime/`。
 
 **支持的平台**：
 
@@ -32,21 +28,12 @@ npm install -g @agentskillmania/sandbox
 **手动安装**（如果自动安装失败）：
 
 ```bash
-# 如果需要代理，设置环境变量
-export HTTP_PROXY=http://proxy.example.com:7890
-export HTTPS_PROXY=http://proxy.example.com:7890
-
-# 使用 CLI 命令重新安装 wasmtime 运行时
 exec-in-sandbox install-runtime
-
-# 或手动下载 wasmtime 43.0.0
-# 访问: https://github.com/bytecodealliance/wasmtime/releases/tag/v43.0.0
-# 解压后复制到 ~/.agentskillmania/sandbox/wasmtime/
 ```
 
 **代理支持**：
 
-安装脚本会自动使用 `curl` 下载（如果可用），它会自动读取以下环境变量：
+安装脚本使用 `curl` 下载，会自动读取以下环境变量：
 
 - `HTTP_PROXY` / `http_proxy`
 - `HTTPS_PROXY` / `https_proxy`
@@ -57,63 +44,42 @@ exec-in-sandbox install-runtime
 ### CLI 语法
 
 ```bash
-exec-in-sandbox [选项] -- <运行时> [参数...]
+exec-in-sandbox [选项] -- <命令>
 ```
 
-`--` 分隔符是必需的。`--` 之前是 CLI 选项，`--` 之后传给 WASM 运行时。
-
-**支持的运行时**：
-
-| 运行时    | 别名                | 说明                                     |
-| --------- | ------------------- | ---------------------------------------- |
-| `busybox` | `bb`                | Busybox 小程序（ls、cat、echo、wget 等） |
-| `sh`      | `wsh`               | Shell 解释器（脚本、管道、变量）         |
-| `python`  | `py`、`micropython` | Python 解释器                            |
+`--` 分隔符是必需的。`--` 之前是 CLI 选项，`--` 之后是要在沙箱中执行的命令字符串。
 
 ### CLI 示例
 
 ```bash
-# 执行 busybox 命令
-exec-in-sandbox -- busybox ls -la
-exec-in-sandbox -- busybox cat file.txt
-exec-in-sandbox -- busybox --list
-
-# 执行 sh shell 脚本
-exec-in-sandbox -- sh -c "echo hello | grep h"
-exec-in-sandbox -- sh -c "X=10; Y=20; echo \$((X + Y))"
-exec-in-sandbox -- sh -c $'echo hello\necho world'
+# 执行 shell 命令
+exec-in-sandbox -- "ls -la"
+exec-in-sandbox -- "cat file.txt"
+exec-in-sandbox -- "echo hello | grep h"
 
 # 执行 Python 代码
-exec-in-sandbox -- python -c "print('hello from python')"
-exec-in-sandbox -- python -c "import os; print(os.listdir('.'))"
+exec-in-sandbox -- "python -c \"print('hello from python')\""
+exec-in-sandbox -- "python -c \"import os; print(os.listdir('.'))\""
 
-# 执行脚本文件
-exec-in-sandbox -- busybox script.sh
-exec-in-sandbox -- python script.py
+# 执行 Git 命令
+exec-in-sandbox -- "git status"
 
 # 使用共享文件系统
-exec-in-sandbox -- busybox -c "echo 'print(42)' > .sandbox/script.py"
-exec-in-sandbox -- python .sandbox/script.py
+exec-in-sandbox -- "echo 'print(42)' > script.py"
+exec-in-sandbox -- "python script.py"
 
 # 命令行选项（在 -- 之前）
-exec-in-sandbox --timeout=10000 --allow-network -- busybox curl https://example.com
-exec-in-sandbox --command-allowlist "ls,cat,echo" -- busybox ls -la
-exec-in-sandbox --sandbox-dir=./my-sandbox -- busybox ls -la
+exec-in-sandbox --timeout=10000 --allow-network -- "curl https://example.com"
+exec-in-sandbox --sandbox-dir=./my-sandbox -- "ls -la"
 ```
 
-**全局选项**：
+### 全局选项
 
-| 命令行参数                      | 说明                                           |
-| ------------------------------- | ---------------------------------------------- |
-| `--timeout <ms>`                | 执行超时时间（毫秒，默认：`5000`）             |
-| `--sandbox-dir <dir>`           | 沙箱目录（默认：`auto` = 系统临时目录）        |
-| `--allow-network`               | 允许网络访问                                   |
-| `--command-allowlist <cmds>`    | 命令白名单（逗号分隔，设置模式为 `whitelist`） |
-| `--command-blocklist <cmds>`    | 命令黑名单（逗号分隔，设置模式为 `blacklist`） |
-| `--network-allowlist <domains>` | 网络白名单（逗号分隔）                         |
-| `--network-blocklist <domains>` | 网络黑名单（逗号分隔）                         |
-
-**配置优先级：** 命令行参数 > 配置文件 > 默认值
+| 命令行参数            | 说明                                    |
+| --------------------- | --------------------------------------- |
+| `--timeout <ms>`      | 执行超时时间（毫秒，默认：`5000`）      |
+| `--sandbox-dir <dir>` | 沙箱目录（默认：`auto` = 系统临时目录） |
+| `--allow-network`     | 允许网络访问（默认：禁用）              |
 
 ### Node.js SDK
 
@@ -124,115 +90,103 @@ import { Sandbox } from '@agentskillmania/sandbox';
 const sandbox = new Sandbox({
   sandboxDir: '.sandbox', // 共享文件系统目录
   timeout: 5000, // 超时时间（毫秒）
+  allowNetwork: false, // 网络访问（默认：false）
 });
 
-// 执行 Shell 命令
-const result1 = await sandbox.runShell('ls', ['-la']);
+// 执行任意命令
+const result1 = await sandbox.run('ls -la');
 console.log(result1.stdout);
 
 // 执行 Python 代码
-const result2 = await sandbox.runPython("print('hello')");
+const result2 = await sandbox.run("python -c 'print(42)'");
 console.log(result2.stdout);
 
-// 通过文件系统传递数据
-await sandbox.runShell('sh', ['-c', 'echo "data" > .sandbox/input.txt']);
-const result3 = await sandbox.runPython(`
-  with open('.sandbox/input.txt') as f:
-    data = f.read()
-  print(f'Got: {data}')
-`);
+// 执行 Git 命令
+const result3 = await sandbox.run('git status');
 console.log(result3.stdout);
+
+// 通过文件系统传递数据
+await sandbox.run('echo "data" > input.txt');
+const result4 = await sandbox.run('cat input.txt');
+console.log(result4.stdout);
 ```
 
-### 配置
+**返回格式**：
 
-全局配置文件位于 `~/.agentskillmania/sandbox/config.yaml`，**仅包含安全策略**。它为命令和网络安全提供默认值：
-
-```yaml
-# 命令安全策略
-commands:
-  mode: blacklist # blacklist = 禁止列表中的命令，whitelist = 只允许列表中的命令
-  list: # 应用该模式的命令列表
-    - rm
-    - format
-    - fdisk
-    - mkfs
-
-# 网络安全策略
-network:
-  mode: blacklist # blacklist = 禁止列表中的域名，whitelist = 只允许列表中的域名
-  list: # 应用该模式的域名列表
-    - '*.malicious.com'
-    - '*.ads.com'
+```typescript
+interface ExecResult {
+  stdout: string; // 标准输出
+  stderr: string; // 标准错误（通常为空，已合并到 stdout）
+  exitCode: number; // 进程退出码
+}
 ```
 
-**模式语义**：
+### 脚本文件
 
-- **黑名单模式**：禁止列表中的项目，允许其他所有项目
-  - 命令：禁止危险命令如 `rm`、`format`
-  - 网络：禁止恶意域名，允许其他所有域名
-- **白名单模式**：只允许列表中的项目，禁止其他所有项目
-  - 命令：只允许特定命令如 `ls`、`cat`
-  - 网络：只允许特定域名如 `*.github.com`
+如果命令参数以 `.sh` 或 `.py` 结尾，会自动读取文件内容并执行：
 
-**网络行为**：
+```javascript
+// 执行 shell 脚本文件
+const result = await sandbox.run('./script.sh');
 
-- 无配置或 `mode: blacklist` 且列表为空 → 禁用网络
-- `mode: whitelist` → 启用网络 + 只允许列表中的域名
-- `mode: blacklist` 且有列表 → 启用网络 + 禁止列表中的域名
+// 执行 Python 脚本文件
+const result = await sandbox.run('./script.py');
+```
 
-**执行参数**（timeout、sandboxDir 等）**不在**配置文件中。必须通过以下方式指定：
+## 文件系统隔离
 
-- 命令行参数：`--timeout 10000`
-- SDK 构造函数：`new Sandbox({ timeout: 10000 })`
+沙箱使用 wasmtime 的 `--dir` 映射提供受控的文件系统视图：
 
-**配置优先级**：
+```
+/workspace  →  host 沙箱目录（读写）
+/tmp        →  host 临时目录（读写，每次执行独立隔离）
+```
 
-1. 命令行参数（最高优先级）
-2. SDK 构造函数参数
-3. 全局安全策略（默认值）
+- **`/workspace`**：沙箱工作目录。所有文件操作（除非使用绝对路径）都在此进行。
+- **`/tmp`**：每次执行时创建的独立临时目录，执行后自动清理。内部用于管道操作。
+- **其他所有路径**：未挂载，不可访问。`../`、`/etc/passwd`、`/home` 等都返回 `No such file or directory` 或 `Operation not permitted`。
 
-**安全策略映射**：
+**安全边界**：真正的隔离由 wasmtime 的目录映射强制执行，而非命令过滤。
 
-| 安全功能 | 全局配置                 | CLI 覆盖                        | SDK 构造函数                 |
-| -------- | ------------------------ | ------------------------------- | ---------------------------- |
-| 命令过滤 | `commands.mode` + `list` | `--command-allowlist/blocklist` | `commandAllowlist/blocklist` |
-| 网络模式 | `network.mode`           | `--allow-network`               | `allowNetwork`               |
-| 域名过滤 | `network.mode` + `list`  | `--network-allowlist/blocklist` | `networkAllowlist/blocklist` |
-
-## 工作原理
+## 架构
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     @agentskillmania/sandbox (Node.js)       │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐  │
-│  │              执行器 (Executor)                      │  │
-│  │  - 验证安全策略                                     │  │
-│  │  - 分发到运行时 (busybox / sh / python)             │  │
+│  │              Executor / Sandbox                      │  │
+│  │  - 验证命令（占位符，当前无实际操作）               │  │
+│  │  - 自动前缀：cd /workspace && <命令>                │  │
+│  │  - 生成独立 /tmp 目录并启动 wasmtime                │  │
 │  └─────────────────────────────────────────────────────┘  │
 │                          ↓                                │
 │  ┌─────────────────────────────────────────────────────┐  │
 │  │            WasmRuntime (wasmtime)                   │  │
 │  │  - 启动 wasmtime 进程                               │  │
-│  │  - 映射沙箱目录                                     │  │
+│  │  - 映射沙箱目录 → /workspace                        │  │
+│  │  - 映射独立临时目录 → /tmp                          │  │
 │  └─────────────────────────────────────────────────────┘  │
 │                          ↓                                │
-│  ┌──────────────┐  ┌──────────┐  ┌─────────────┐        │
-│  │ busybox.wasm │  │ sh       │  │ python      │        │
-│  │ (小程序)     │  │ (shell)  │  │ (python)    │        │
-│  └──────────────┘  └──────────┘  └─────────────┘        │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │              busybox.wasm（组合组件）               │  │
+│  │  - wsh: shell 解释器                                │  │
+│  │  - git: 版本控制                                    │  │
+│  │  - python: Python 解释器                            │  │
+│  └─────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-1. **显式运行时选择**：用户指定使用哪个运行时（`busybox`、`sh` 或 `python`）
-2. **安全验证**：执行前强制执行命令和网络策略
-3. **共享文件系统**：沙箱目录通过 `--dir` 映射到 WASM 进程
-4. **进程隔离**：每次执行都是独立的 wasmtime 进程，执行完成后退出
+## 工作原理
 
-## Shell 脚本支持 (sh)
+1. **统一命令接口**：用户传入命令字符串（`ls -la`、`python -c "print(42)"`、`git status`）
+2. **目录前缀**：命令自动加上 `cd /workspace &&` 前缀，确保文件操作在沙箱目录下进行
+3. **隔离执行**：每次执行生成新的 wasmtime 进程，附带独立的 `/tmp` 目录
+4. **清理**：执行结束后自动删除临时 `/tmp` 目录
 
-Shell 脚本（`.sh` 文件）和内联 shell 代码通过 **sh**（底层为 wsh）执行，这是来自 busybox-wasi 的自定义 WASM shell 实现。
+## Shell 特性
+
+Shell 脚本（`.sh` 文件）和内联 shell 代码通过 **wsh** 执行，这是 busybox.wasm 内置的 WASM shell 实现。
 
 ### 支持的功能
 
@@ -247,103 +201,33 @@ Shell 脚本（`.sh` 文件）和内联 shell 代码通过 **sh**（底层为 ws
 
 ### 已知限制
 
-这些是 **wsh 实现限制**，不是 sandbox 的 bug：
-
 - ❌ **不支持函数定义** — `()` 语法不支持
 
-### 脚本格式
+## Python 特性
 
-```bash
-# ✅ 正确：格式良好的 wsh 脚本
-echo "Hello"
-echo "World"
+内置的 Python 解释器（MicroPython）支持：
 
-# 注释已支持
-X=10
-Y=20
-result=$((X + Y))
-echo $result
+| 模块          | 支持的功能                                                              |
+| ------------- | ----------------------------------------------------------------------- |
+| `socket`      | TCP 客户端/服务端、`connect`、`bind`、`listen`、`accept`、`send`/`recv` |
+| `asyncio`     | async/await、事件循环、锁、流                                           |
+| `json`        | `dumps`、`loads`                                                        |
+| `re`          | `match`、`search`、`sub`                                                |
+| `hashlib`     | `sha256`、`md5`                                                         |
+| `math`        | `pi`、`e`、`factorial`、`gamma`、`erf`                                  |
+| `random`      | `random()`、`randint()`、`choice()`                                     |
+| `time`        | `time()`、`time_ns()`、`gmtime()`、`localtime()`、`mktime()`            |
+| `sys`         | `exc_info()`、`atexit()`                                                |
+| `os`          | `listdir`、`mkdir`、`remove`、`stat`                                    |
+| `heapq`       | `heappush`、`heappop`、`heapify`                                        |
+| `collections` | `deque`、`OrderedDict`                                                  |
 
-if [ "$X" -gt 5 ]; then
-    echo "X is large"
-fi
-
-# ❌ 错误：使用了不支持的功能
-#!/bin/sh
-myfunc() { echo "not supported"; }
-```
-
-**提示**：
-
-- 使用 `$((...))` 进行算术运算
-- `#` 注释完全支持
-- 换行可以分隔命令（不需要到处用 `;`）
-- 避免函数定义 — 使用内联命令
-
-### MicroPython 功能
-
-集成的 MicroPython 解释器支持以下功能：
-
-| 模块          | 支持的功能                                                                                                      |
-| ------------- | --------------------------------------------------------------------------------------------------------------- |
-| `socket`      | TCP 客户端/服务端、**UDP** (v0.2.1+)、`connect`、`bind`、`listen`、`accept`、`send`/`recv`、`sendto`/`recvfrom` |
-| `asyncio`     | async/await、事件循环、锁、流                                                                                   |
-| `json`        | `dumps`、`loads`                                                                                                |
-| `re`          | `match`、`search`、`sub`                                                                                        |
-| `hashlib`     | `sha256`、`md5`                                                                                                 |
-| `deflate`     | `DeflateIO`（压缩）                                                                                             |
-| `math`        | `pi`、`e`、`factorial`、`gamma`、`erf`                                                                          |
-| `random`      | `random()`、`randint()`、`choice()`                                                                             |
-| `time`        | `time()`、`time_ns()`、`gmtime()`、`localtime()`、`mktime()` (v0.2.3+)                                          |
-| `sys`         | `exc_info()`、`atexit()` (v0.2.3+)                                                                              |
-| `os`          | `listdir`、`mkdir`、`remove`、`stat`                                                                            |
-| `heapq`       | `heappush`、`heappop`、`heapify`                                                                                |
-| `collections` | `deque`、`OrderedDict`                                                                                          |
-
-**网络能力：**
+**网络能力**（需要 `--allow-network`）：
 
 - ✅ TCP sockets（客户端和服务端）
-- ✅ UDP sockets (v0.2.1+)
-- ✅ DNS 解析 (v0.2.3+，需要 `--allow-network`)
+- ✅ DNS 解析
+- ❌ UDP sockets — wasmtime 中不稳定（可能崩溃）
 - ❌ HTTPS/SSL — 无 TLS 支持
-
-**Python 示例：**
-
-```bash
-# TCP 客户端
-exec-in-sandbox --allow-network -- python -c "
-import socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('140.82.121.6', 80))
-s.send(b'GET / HTTP/1.0\r\n\r\n')
-print(s.recv(1024))
-s.close()
-"
-
-# UDP socket
-exec-in-sandbox --allow-network -- python -c "
-import socket
-s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-s.sendto(b'hello', ('8.8.8.8', 53))
-data, addr = s.recvfrom(1024)
-print('Received from', addr)
-s.close()
-"
-
-# asyncio
-exec-in-sandbox -- python -c "
-import asyncio
-async def main():
-    print('hello async')
-asyncio.run(main())
-"
-
-# JSON
-exec-in-sandbox -- python -c "
-import json
-print(json.dumps({'name': 'sandbox', 'version': 1}))
-"
-```
 
 ## 性能
 
@@ -355,24 +239,44 @@ print(json.dumps({'name': 'sandbox', 'version': 1}))
 | 内存增长（50次执行） | ~4MB                     | >1GB   |
 | 磁盘占用             | ~3MB                     | >100MB |
 
+## 安全
+
+### 文件系统隔离
+
+主要安全机制是 wasmtime 的目录隔离：
+
+- 只有 `/workspace`（沙箱目录）和 `/tmp`（独立临时目录）可见
+- `../` 路径遍历被 wasmtime 阻止（`Operation not permitted`）
+- Host 系统文件（`/etc`、`/home` 等）完全不可访问
+
+### 命令安全（占位符）
+
+`SecurityPolicy` 类作为未来扩展的钩子存在，但当前**允许所有命令**。真正的隔离来自文件系统边界，而非命令过滤。
+
+### 网络安全
+
+- 网络**默认禁用**
+- 使用 `--allow-network` 或 `allowNetwork: true` 启用
+- 启用后所有网络能力（TCP、DNS）都可用
+- **域名级别过滤未实现** — 网络要么全开，要么全关
+
 ## 开发
 
 ```bash
-# 克隆仓库
-git clone https://github.com/agentskillmania/sandbox.git
-cd sandbox
-
 # 安装依赖
-npm install
+pnpm install
 
-# 运行测试
-npm test
+# 构建
+pnpm run build
 
-# Lint
-npm run lint
+# 运行全部测试
+pnpm run test
 
-# Format
-npm run format
+# 只运行单元测试
+pnpm run test:unit
+
+# 只运行集成测试
+pnpm run test:integration
 ```
 
 ## 贡献

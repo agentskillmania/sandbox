@@ -38,7 +38,7 @@ describe('Script Execution Integration Tests', () => {
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
       const scriptPath = join(scriptsDir, 'simple.sh');
 
-      const result = await sandbox.runShell('busybox', [scriptPath]);
+      const result = await sandbox.run(scriptPath);
       console.log('STDOUT:', result.stdout);
       console.log('STDERR:', result.stderr);
 
@@ -55,7 +55,7 @@ describe('Script Execution Integration Tests', () => {
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
       const scriptPath = join(scriptsDir, 'variables.sh');
 
-      const result = await sandbox.runShell('busybox', [scriptPath]);
+      const result = await sandbox.run(scriptPath);
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);
@@ -73,7 +73,7 @@ describe('Script Execution Integration Tests', () => {
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
       const scriptPath = join(scriptsDir, 'functions.sh');
 
-      const result = await sandbox.runShell('busybox', [scriptPath]);
+      const result = await sandbox.run(scriptPath);
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);
@@ -92,7 +92,7 @@ describe('Script Execution Integration Tests', () => {
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
       const scriptPath = join(scriptsDir, 'simple.py');
 
-      const result = await sandbox.runShell('busybox', [scriptPath]);
+      const result = await sandbox.run(scriptPath);
       console.log('STDOUT:', result.stdout);
       console.log('STDERR:', result.stderr);
 
@@ -109,7 +109,7 @@ describe('Script Execution Integration Tests', () => {
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
       const scriptPath = join(scriptsDir, 'data_processing.py');
 
-      const result = await sandbox.runShell('busybox', [scriptPath]);
+      const result = await sandbox.run(scriptPath);
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);
@@ -131,7 +131,7 @@ describe('Script Execution Integration Tests', () => {
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
       const scriptPath = join(scriptsDir, 'various-shebangs.sh');
 
-      const result = await sandbox.runShell('busybox', [scriptPath]);
+      const result = await sandbox.run(scriptPath);
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);
@@ -147,7 +147,7 @@ describe('Script Execution Integration Tests', () => {
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
       const scriptPath = join(scriptsDir, 'shebang-bash.sh');
 
-      const result = await sandbox.runShell('busybox', [scriptPath]);
+      const result = await sandbox.run(scriptPath);
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);
@@ -163,7 +163,7 @@ describe('Script Execution Integration Tests', () => {
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
       const scriptPath = join(scriptsDir, 'shebang-env-python.py');
 
-      const result = await sandbox.runShell('busybox', [scriptPath]);
+      const result = await sandbox.run(scriptPath);
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);
@@ -180,7 +180,7 @@ describe('Script Execution Integration Tests', () => {
 
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
 
-      const result = await sandbox.runPython('print("Hello from SDK")');
+      const result = await sandbox.run('python -c \'print("Hello from SDK")\'');
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);
@@ -195,7 +195,7 @@ describe('Script Execution Integration Tests', () => {
 
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
 
-      const result = await sandbox.runPython('x = 10; y = 20; print(x + y)');
+      const result = await sandbox.run("python -c 'x = 10; y = 20; print(x + y)'");
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);
@@ -213,7 +213,7 @@ describe('Script Execution Integration Tests', () => {
       const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
       const scriptPath = join(scriptsDir, 'simple.py');
 
-      const result = await sandbox.runPythonScript(scriptPath);
+      const result = await sandbox.run('python ' + scriptPath);
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);

@@ -4,12 +4,11 @@ MCP (Model Context Protocol) server for executing shell commands and Python code
 
 ## Features
 
-- 🔒 **Secure Execution**: All commands run in WASM sandbox with controlled filesystem access
+- 🔒 **Secure Execution**: All commands run in WASM sandbox with filesystem isolation
 - ⚡ **Fast**: ~12ms average execution time using wasmtime runtime
 - 🛠️ **Rich Tool Set**: 7 tools covering shell, Python, scripts, and file operations
 - 🔧 **Environment Config**: Configure via environment variables, no config files needed
-- 🌐 **Network Control**: Optional network access via global on/off switch (WASI preview2 does not support domain-level filtering)
-- 📝 **Security Policies**: Command whitelist/blacklist support
+- 🌐 **Network Control**: Optional network access via on/off switch (WASI preview2 does not support domain-level filtering)
 
 ## Installation
 
@@ -21,12 +20,12 @@ npm install @agentskillmania/sandbox-mcp
 
 ### Shell Execution
 
-- `run_shell` - Execute shell commands with busybox
+- `run_shell` - Execute shell commands in WASM sandbox
 - `run_script` - Execute shell/Python scripts from content
 
 ### Python Execution
 
-- `run_python` - Execute Python code strings with micropython
+- `run_python` - Execute Python code strings
 
 ### File Operations
 
@@ -44,10 +43,6 @@ Configure via environment variables:
 export SANDBOX_TIMEOUT=5000
 export SANDBOX_ALLOW_NETWORK=false
 export SANDBOX_SANDBOX_DIR=".sandbox-mcp"
-
-# Command security policy (whitelist or blacklist)
-export SANDBOX_COMMAND_MODE=whitelist
-export SANDBOX_COMMAND_LIST=ls,cat,echo
 
 # Note: WASI preview2 does not support domain-level network filtering.
 # Network access is controlled only by the SANDBOX_ALLOW_NETWORK switch.
@@ -102,8 +97,7 @@ Execute shell commands in WASM sandbox.
 
 ```json
 {
-  "command": "ls",
-  "args": ["-la"],
+  "command": "ls -la",
   "timeout": 5000,
   "allowNetwork": false
 }
@@ -178,14 +172,13 @@ Delete file from sandbox directory.
 ### Filesystem Isolation
 
 - All operations restricted to sandbox directory (default: `.sandbox-mcp`)
-- No access to parent directories or system files
+- Mapped as `/workspace` inside the WASM process
+- No access to parent directories or system files (`../` is blocked by wasmtime)
 - Temporary scripts auto-deleted after execution
 
 ### Command Security
 
-- Whitelist mode: Only allow specified commands (`SANDBOX_COMMAND_MODE=whitelist SANDBOX_COMMAND_LIST=ls,cat`)
-- Blacklist mode: Block dangerous commands (`SANDBOX_COMMAND_MODE=blacklist SANDBOX_COMMAND_LIST=rm,format`)
-- Default: All commands allowed (configure for production)
+Command filtering is currently a **placeholder** for future enhancements. The real security boundary is wasmtime's filesystem isolation.
 
 ### Network Security
 

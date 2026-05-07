@@ -1,6 +1,8 @@
 /**
  * MCP Server 实现
  * 提供 tools: run_shell, run_python, run_script, read_file, write_file, list_files, delete_file
+ *
+ * 提供 tools: run_shell, run_python, run_script, read_file, write_file, list_files, delete_file
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

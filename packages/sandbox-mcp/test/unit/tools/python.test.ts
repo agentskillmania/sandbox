@@ -17,12 +17,12 @@ describe('run_python tool', () => {
 
   beforeEach(() => {
     mockSandbox = {
-      runPython: vi.fn(),
+      run: vi.fn(),
     };
   });
 
-  it('should execute Python code', async () => {
-    mockSandbox.runPython.mockResolvedValue({
+  it('should execute Python code via sandbox.run', async () => {
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: '42',
       stderr: '',
@@ -32,7 +32,7 @@ describe('run_python tool', () => {
       code: 'print(2 + 2)',
     });
 
-    expect(mockSandbox.runPython).toHaveBeenCalledWith('print(2 + 2)');
+    expect(mockSandbox.run).toHaveBeenCalledWith("python -c 'print(2 + 2)'");
     expect(result.content[0].text).toContain('✅');
     expect(result.content[0].text).toContain('42');
     expect(result.isError).toBe(false);
@@ -40,7 +40,7 @@ describe('run_python tool', () => {
 
   it('should execute multi-line Python code', async () => {
     const code = 'x = 10\ny = 20\nprint(x + y)';
-    mockSandbox.runPython.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: '30',
       stderr: '',
@@ -48,12 +48,12 @@ describe('run_python tool', () => {
 
     const result = await runPythonTool.handler(mockSandbox, { code });
 
-    expect(mockSandbox.runPython).toHaveBeenCalledWith(code);
+    expect(mockSandbox.run).toHaveBeenCalledWith("python -c 'x = 10\ny = 20\nprint(x + y)'");
     expect(result.content[0].text).toContain('30');
   });
 
   it('should handle Python errors', async () => {
-    mockSandbox.runPython.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 1,
       stdout: '',
       stderr: 'SyntaxError: invalid syntax',
@@ -89,7 +89,7 @@ describe('run_python tool', () => {
   });
 
   it('should include stdout in success response', async () => {
-    mockSandbox.runPython.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 0,
       stdout: 'Hello from Python\n42',
       stderr: '',
@@ -105,7 +105,7 @@ describe('run_python tool', () => {
   });
 
   it('should include both stdout and stderr in error response', async () => {
-    mockSandbox.runPython.mockResolvedValue({
+    mockSandbox.run.mockResolvedValue({
       exitCode: 1,
       stdout: 'partial output',
       stderr: 'Traceback (most recent call last):\nError: something went wrong',

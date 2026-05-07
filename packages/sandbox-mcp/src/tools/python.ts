@@ -8,7 +8,7 @@ import { Sandbox } from '@agentskillmania/sandbox';
 export const runPythonTool = {
   definition: {
     name: 'run_python',
-    description: 'Execute Python code in a WASM sandbox with micropython',
+    description: 'Execute Python code in a WASM sandbox via busybox wsh python',
     inputSchema: {
       type: 'object',
       properties: {
@@ -23,7 +23,9 @@ export const runPythonTool = {
 
   async handler(sandbox: Sandbox, args: { code: string }) {
     const { code } = args;
-    const result = await sandbox.runPython(code);
+    // Escape single quotes in code for shell safety
+    const escapedCode = code.replace(/'/g, "'\"'\"'");
+    const result = await sandbox.run(`python -c '${escapedCode}'`);
 
     return {
       content: [

@@ -1,7 +1,9 @@
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { mkdirp } from 'mkdirp';
 import type { ExecResult, SandboxConfig } from './types.js';
 import { TimeoutError } from './types.js';
@@ -22,12 +24,16 @@ const DEFAULT_CONFIG = {
 };
 
 /**
- * Sandbox class - executes WASM modules in isolated environment
+ * Sandbox class - executes shell commands in an isolated WASM environment.
+ *
+ * Supports shell commands, python scripts, git operations,
+ * and any other command available inside the sandbox.
  */
 export class Sandbox {
   private config: SandboxConfig;
   private sandboxDir: string;
-  private wasmPaths: ReturnType<typeof getWasmPaths>;
+  private busyboxPath: string;
+  private wasmtimePath: string;
   private securityPolicy: SecurityPolicy;
 
   constructor(options: SandboxConfig = {}) {
@@ -40,25 +46,18 @@ export class Sandbox {
           ? { mode: 'blacklist' as const, list: options.commandBlocklist }
           : undefined);
 
-    const networkPolicy =
-      options.networkPolicy ??
-      (options.networkAllowlist?.length
-        ? { mode: 'whitelist' as const, list: options.networkAllowlist }
-        : options.networkBlocklist?.length
-          ? { mode: 'blacklist' as const, list: options.networkBlocklist }
-          : undefined);
-
-    this.config = { ...DEFAULT_CONFIG, ...options, commandPolicy, networkPolicy };
+    this.config = { ...DEFAULT_CONFIG, ...options, commandPolicy };
 
     // Handle 'auto' for sandbox directory
     if (this.config.sandboxDir === 'auto') {
-      // Create temp directory in system temp directory
       this.sandboxDir = mkdtempSync(join(tmpdir(), 'sandbox-'));
     } else {
       this.sandboxDir = this.config.sandboxDir!;
     }
 
-    this.wasmPaths = getWasmPaths();
+    const wasmPaths = getWasmPaths();
+    this.busyboxPath = wasmPaths.busybox;
+    this.wasmtimePath = getWasmtimeExecutable();
     this.securityPolicy = new SecurityPolicy(commandPolicy);
 
     // Ensure sandbox directory exists
@@ -89,13 +88,6 @@ export class Sandbox {
   }
 
   /**
-   * Validate if command is allowed based on whitelist/blacklist
-   */
-  private _validateCommand(command: string): void {
-    this.securityPolicy.validate({ runtime: 'busybox', argv: [command] });
-  }
-
-  /**
    * Build network-related wasmtime arguments
    */
   private _buildNetworkArgs(): string[] {
@@ -118,299 +110,152 @@ export class Sandbox {
   }
 
   /**
-   * Execute WASM module with wasmtime
+   * Execute a command string in the sandbox.
+   *
+   * Examples:
+   *   sandbox.run('ls -la')
+   *   sandbox.run('python -c "print(42)"')
+   *   sandbox.run('git status')
+   *   sandbox.run('cat file.txt | grep hello')
+   *
+   * If the command is a path to a script file (.sh or .py), the file content
+   * is read and executed.
    */
-  private async _execWasm(modulePath: string, args: string[]): Promise<ExecResult> {
+  async run(command: string): Promise<ExecResult> {
+    // Check if command is a script file path
+    const trimmed = command.trim();
+    if (trimmed.endsWith('.sh') || trimmed.endsWith('.py')) {
+      return this._runScriptFile(trimmed);
+    }
+
+    // Validate the first token of the command
+    const firstToken = trimmed.split(/\s+/)[0] ?? '';
+    if (firstToken && !firstToken.startsWith('--')) {
+      this.securityPolicy.validate({ command: firstToken });
+    }
+
+    return this._execWsh(command);
+  }
+
+  /**
+   * Execute a script file by reading its content and passing to the sandbox.
+   */
+  private async _runScriptFile(scriptPath: string): Promise<ExecResult> {
+    if (!existsSync(scriptPath)) {
+      throw new Error(`Script file not found: ${scriptPath}`);
+    }
+
+    const content = readFileSync(scriptPath, 'utf-8');
+
+    // Check for shebang and remove it
+    const lines = content.split('\n');
+    const firstLine = lines[0].trim();
+    let scriptContent = content;
+
+    if (firstLine.startsWith('#!')) {
+      scriptContent = lines.slice(1).join('\n');
+    }
+
+    if (scriptPath.endsWith('.py')) {
+      return this._execWsh(`python -c '${scriptContent.replace(/'/g, "'\"'\"'")}'`);
+    }
+
+    // .sh file
+    return this._execWsh(scriptContent);
+  }
+
+  /**
+   * Execute a command via the sandbox WASM runtime.
+   */
+  private async _execWsh(command: string): Promise<ExecResult> {
     return new Promise((resolve, reject) => {
       const timeout = this.config.timeout;
       let stdout = '';
       let stderr = '';
       let timedOut = false;
 
-      // Check if module exists
-      if (!existsSync(modulePath)) {
-        reject(new Error(`WASM module not found: ${modulePath}`));
+      if (!existsSync(this.busyboxPath)) {
+        reject(new Error(`WASM module not found: ${this.busyboxPath}`));
         return;
       }
 
-      // Get dedicated wasmtime executable
-      const wasmtimeExe = getWasmtimeExecutable();
-      if (!existsSync(wasmtimeExe)) {
+      if (!existsSync(this.wasmtimePath)) {
         reject(
           new Error(
-            `Wasmtime not found: ${wasmtimeExe}\nPlease run: npm install @agentskillmania/sandbox`
+            `Wasmtime not found: ${this.wasmtimePath}\nPlease run: npm install @agentskillmania/sandbox`
           )
         );
         return;
       }
 
-      // wsh needs /tmp directory for pipe temp files
-      const isWsh = args[0] === 'wsh' || (args[0] === 'busybox' && args.includes('wsh'));
+      // Create an isolated temp directory for this wasmtime instance.
+      // wsh uses fixed paths like /tmp/_wsh_p_0 for pipe temp files;
+      // without isolation, concurrent instances overwrite each other.
+      const tmpDir = join(tmpdir(), `sandbox-tmp-${randomUUID()}`);
+      mkdirSync(tmpDir, { recursive: true });
 
-      // Build wasmtime arguments
+      const cleanup = () => {
+        try {
+          rmSync(tmpDir, { recursive: true, force: true });
+        } catch {
+          // ignore
+        }
+      };
+
       const wasmtimeArgs = [
         '-W',
         'exceptions=y',
         '-S',
         'cli=y',
         '--dir',
-        this.sandboxDir,
-        ...(isWsh ? ['--dir', '/tmp'] : []),
+        `${this.sandboxDir}::/workspace`,
+        '--dir',
+        `${tmpDir}::/tmp`,
         ...this._buildNetworkArgs(),
-        modulePath,
-        ...args,
+        this.busyboxPath,
+        'wsh',
+        '-c',
+        `cd /workspace && ${command}`,
       ];
 
-      // Spawn wasmtime process
-      const proc = spawn(wasmtimeExe, wasmtimeArgs);
+      const proc = spawn(this.wasmtimePath, wasmtimeArgs);
 
-      // Set timeout
       const timer = setTimeout(() => {
         timedOut = true;
         proc.kill('SIGKILL');
         reject(new TimeoutError(`Execution timeout (${timeout}ms)`));
       }, timeout);
 
-      // Collect output
-      proc.stdout?.on('data', (data) => {
+      proc.stdout?.on('data', (data: Buffer) => {
         stdout += data.toString();
       });
 
-      proc.stderr?.on('data', (data) => {
+      proc.stderr?.on('data', (data: Buffer) => {
         stderr += data.toString();
       });
 
-      proc.on('close', (code) => {
+      proc.on('close', (code: number | null) => {
         clearTimeout(timer);
+        cleanup();
         if (timedOut) return;
 
         // wsh pipe output goes to stderr (freopen cannot restore stdout)
-        // merge stderr into stdout to match busybox-wasi test framework behavior
-        const finalStdout = isWsh && stderr ? stdout + '\n' + stderr : stdout;
-        const finalStderr = isWsh ? '' : stderr;
+        // merge stderr into stdout to match expected behavior
+        const finalStdout = stderr ? stdout + '\n' + stderr : stdout;
 
         resolve({
           stdout: finalStdout,
-          stderr: finalStderr,
+          stderr: '',
           exitCode: code ?? 0,
         });
       });
 
-      proc.on('error', (error) => {
+      proc.on('error', (error: Error) => {
         clearTimeout(timer);
+        cleanup();
         reject(error);
       });
     });
-  }
-
-  /**
-   * Execute Shell command via busybox.wasm
-   * Special commands that bypass validation:
-   * - '' (empty): shows busybox help
-   * - '--list': lists all busybox commands
-   * - '--list-full': lists all commands with full paths
-   * - '--help': shows busybox help
-   *
-   * Script file execution:
-   * - If first arg is a script file (.sh, .py, .pl), execute it appropriately
-   * - .sh files: read content and execute via wsh -c
-   * - .py files: execute via micropython.wasm
-   * - .pl files: execute via micropython.wasm
-   */
-  async runShell(command: string, args: string[] = []): Promise<ExecResult> {
-    // Skip validation for built-in busybox commands
-    const skipValidation = command === '' || command.startsWith('--');
-
-    if (!skipValidation) {
-      this._validateCommand(command);
-    }
-
-    // Check if first argument is a script file
-    if (args.length > 0 && this._isScriptFile(args[0])) {
-      return this._executeScript(args[0], args.slice(1));
-    }
-
-    // Build args: pass command and args directly to busybox
-    const wasmArgs = command === '' ? args : [command, ...args];
-    return this._execWasm(this.wasmPaths.busybox, wasmArgs);
-  }
-
-  /**
-   * Check if a path is a script file based on extension
-   */
-  private _isScriptFile(path: string): boolean {
-    return path.endsWith('.sh') || path.endsWith('.py');
-  }
-
-  /**
-   * Execute a script file based on its type
-   * First checks for shebang, then falls back to file extension
-   */
-  private async _executeScript(scriptPath: string, scriptArgs: string[]): Promise<ExecResult> {
-    // Check if script exists
-    if (!existsSync(scriptPath)) {
-      throw new Error(`Script file not found: ${scriptPath}`);
-    }
-
-    // Try to detect interpreter from shebang
-    const shebangInterpreter = this._detectShebangInterpreter(scriptPath);
-
-    if (shebangInterpreter) {
-      switch (shebangInterpreter) {
-        case 'sh':
-        case 'bash':
-        case 'wsh':
-          return this._executeShellScript(scriptPath, scriptArgs);
-        case 'python':
-        case 'python3':
-        case 'micropython':
-          return this._executePythonScript(scriptPath, scriptArgs);
-        default:
-          throw new Error(
-            `Unsupported shebang interpreter: ${shebangInterpreter}. Supported: sh, bash, wsh, python, python3, micropython`
-          );
-      }
-    }
-
-    // Fall back to file extension
-    const ext = scriptPath.split('.').pop()!;
-
-    switch (ext) {
-      case 'sh':
-        return this._executeShellScript(scriptPath, scriptArgs);
-      case 'py':
-        return this._executePythonScript(scriptPath, scriptArgs);
-      default:
-        throw new Error(`Unsupported script type: .${ext}. Supported: .sh, .py`);
-    }
-  }
-
-  /**
-   * Detect interpreter from script shebang
-   * Returns interpreter name or null if no shebang found
-   *
-   * Handles:
-   * - #!/bin/sh -> sh
-   * - #!/usr/bin/env python3 -> python3 (unwraps env)
-   * - #!/usr/bin/bash -> bash
-   * - #!/usr/bin/perl -> perl
-   */
-  private _detectShebangInterpreter(scriptPath: string): string | null {
-    try {
-      const scriptContent = readFileSync(scriptPath, 'utf-8');
-      const firstLine = scriptContent.split('\n')[0].trim();
-
-      if (firstLine.startsWith('#!')) {
-        const shebang = firstLine.slice(2).trim();
-        const parts = shebang.split(/\s+/);
-        const executable = parts[0];
-
-        // Extract interpreter name from executable path
-        const interpreter = executable.split('/').pop()!;
-
-        // Handle 'env' wrapper: #!/usr/bin/env python3 -> python3
-        if (interpreter === 'env' && parts.length > 1) {
-          return parts[1];
-        }
-
-        return interpreter;
-      }
-
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Execute a shell script via busybox wsh
-   * Reads the script content, checks for shebang, and passes it to wsh -c
-   * Note: Script arguments are not supported due to wsh limitations
-   */
-  private async _executeShellScript(scriptPath: string, scriptArgs: string[]): Promise<ExecResult> {
-    let scriptContent = readFileSync(scriptPath, 'utf-8');
-
-    // Warn if script arguments are provided (not supported by wsh)
-    if (scriptArgs.length > 0) {
-      console.warn(`Warning: Script arguments are not supported for .sh files in WASM sandbox`);
-    }
-
-    // Check for shebang and remove it
-    const lines = scriptContent.split('\n');
-    const firstLine = lines[0].trim();
-
-    if (firstLine.startsWith('#!')) {
-      // Shebang found - validate and warn if unsupported
-      const shebang = firstLine.slice(2).trim();
-
-      // Check if shebang references a supported interpreter
-      if (shebang.includes('sh') || shebang.includes('bash') || shebang.includes('wsh')) {
-        // Supported - remove shebang
-        scriptContent = lines.slice(1).join('\n');
-      } else {
-        throw new Error(`Unsupported shebang: ${firstLine}. Only sh/bash/wsh are supported.`);
-      }
-    }
-
-    return this._execWasm(this.wasmPaths.busybox, ['wsh', '-c', scriptContent]);
-  }
-
-  /**
-   * Execute a Python script via micropython.wasm
-   * Reads the script content and passes it directly
-   * Note: Script arguments are not supported by this WASM build
-   */
-  private async _executePythonScript(
-    scriptPath: string,
-    scriptArgs: string[]
-  ): Promise<ExecResult> {
-    const scriptContent = readFileSync(scriptPath, 'utf-8');
-
-    // Warn if script arguments are provided (not supported)
-    if (scriptArgs.length > 0) {
-      console.warn(`Warning: Script arguments are not supported for .py files in WASM sandbox`);
-    }
-
-    // Check for shebang and remove it
-    const lines = scriptContent.split('\n');
-    const firstLine = lines[0].trim();
-
-    let codeToExecute = scriptContent;
-    if (firstLine.startsWith('#!')) {
-      // Shebang found - remove it
-      codeToExecute = lines.slice(1).join('\n');
-    }
-
-    return this._execWasm(this.wasmPaths.micropython, [codeToExecute]);
-  }
-
-  /**
-   * Execute Python code string
-   * Note: micropython.wasm expects code directly, not -c option
-   */
-  async runPython(code: string): Promise<ExecResult> {
-    return this._execWasm(this.wasmPaths.micropython, [code]);
-  }
-
-  /**
-   * Execute Python script file
-   * Note: micropython.wasm doesn't support file paths, so we read content first
-   */
-  async runPythonScript(scriptPath: string, args: string[] = []): Promise<ExecResult> {
-    // Check if script exists
-    if (!existsSync(scriptPath)) {
-      throw new Error(`Script file not found: ${scriptPath}`);
-    }
-
-    // Read script content
-    const scriptContent = readFileSync(scriptPath, 'utf-8');
-
-    // Warn if script arguments are provided (not supported by this WASM build)
-    if (args.length > 0) {
-      console.warn(`Warning: Script arguments are not supported for .py files in WASM sandbox`);
-    }
-
-    return this._execWasm(this.wasmPaths.micropython, [scriptContent]);
   }
 
   /**

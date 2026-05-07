@@ -2,20 +2,21 @@
 /**
  * @agentskillmania/sandbox CLI entry point
  *
- * Syntax: exec-in-sandbox [OPTIONS] -- <runtime> [argv...]
+ * Syntax: exec-in-sandbox [OPTIONS] -- <command>
+ *
+ * All commands are executed in an isolated WASM sandbox.
  *
  * Examples:
- *   exec-in-sandbox --timeout 5000 -- busybox ls -la
- *   exec-in-sandbox --sandbox-dir=. -- sh -c "echo hello"
- *   exec-in-sandbox -- python -c "print(42)"
- *   exec-in-sandbox -- busybox --list
+ *   exec-in-sandbox -- "ls -la"
+ *   exec-in-sandbox -- "python -c 'print(42)'"
+ *   exec-in-sandbox -- "git status"
+ *   exec-in-sandbox -- "cat file.txt | grep hello"
  */
 
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { createRequire } from 'node:module';
 import { Executor } from '../lib/core/executor.js';
-import type { ExecutionRequest } from '../lib/core/types.js';
 import { initializeSecurityConfig } from '../lib/config.js';
 import { getRuntimeVersions, getWasmtimeExecutable, getWasmPaths } from '../lib/runtime.js';
 
@@ -26,7 +27,7 @@ const program = new Command();
 
 program
   .name('exec-in-sandbox')
-  .description('@agentskillmania/sandbox - unified WASM sandbox tool')
+  .description('@agentskillmania/sandbox - unified WASM sandbox shell')
   .version(pkg.version);
 
 // Global options
@@ -38,36 +39,16 @@ program
   .option('--command-blocklist <cmds>', 'Command blocklist (comma-separated)')
   .option('--network-allowlist <domains>', 'Network allowlist (comma-separated)')
   .option('--network-blocklist <domains>', 'Network blocklist (comma-separated)')
-  .argument('[args...]', 'Runtime and arguments after --');
+  .argument('[command]', 'Command to execute after --');
 
-program.action(async (args, options) => {
+program.action(async (command, options) => {
   try {
-    if (args.length === 0) {
-      console.error(chalk.red('Error: No runtime specified'));
-      console.error('Usage: exec-in-sandbox [options] -- <runtime> [args...]');
-      console.error('  exec-in-sandbox -- busybox ls -la');
-      console.error('  exec-in-sandbox -- sh -c "echo hello"');
-      console.error('  exec-in-sandbox -- python -c "print(42)"');
-      process.exit(1);
-    }
-
-    const [runtimeName, ...argv] = args;
-
-    // Map user-friendly names to internal runtime names
-    const runtimeMap: Record<string, ExecutionRequest['runtime']> = {
-      busybox: 'busybox',
-      bb: 'busybox',
-      sh: 'sh',
-      wsh: 'sh',
-      python: 'python',
-      py: 'python',
-      micropython: 'python',
-    };
-
-    const runtime = runtimeMap[runtimeName];
-    if (!runtime) {
-      console.error(chalk.red(`Error: Unknown runtime '${runtimeName}'`));
-      console.error(`Supported: ${Object.keys(runtimeMap).join(', ')}`);
+    if (!command || command.length === 0) {
+      console.error(chalk.red('Error: No command specified'));
+      console.error('Usage: exec-in-sandbox [options] -- <command>');
+      console.error('  exec-in-sandbox -- "ls -la"');
+      console.error('  exec-in-sandbox -- "python -c \'print(42)\'"');
+      console.error('  exec-in-sandbox -- "git status"');
       process.exit(1);
     }
 
@@ -84,17 +65,13 @@ program.action(async (args, options) => {
     const executor = new Executor({
       wasmtimePath: getWasmtimeExecutable(),
       busyboxPath: wasmPaths.busybox,
-      micropythonPath: wasmPaths.micropython,
       sandboxDir: options.sandboxDir || 'auto',
       timeout: parseInt(options.timeout),
       allowNetwork: options.allowNetwork || false,
       commandPolicy,
     });
 
-    // python (micropython) does not support -c; it takes code directly
-    const normalizedArgv = runtime === 'python' && argv[0] === '-c' ? argv.slice(1) : argv;
-
-    const result = await executor.exec({ runtime, argv: normalizedArgv });
+    const result = await executor.exec({ command });
 
     if (result.stdout) process.stdout.write(result.stdout);
     if (result.stderr) process.stderr.write(result.stderr);
@@ -121,7 +98,6 @@ program
     console.log(chalk.bold('Runtimes:'));
     console.log(`  wasmtime: ${formatVersion(versions.wasmtime)}`);
     console.log(`  busybox.wasm: ${formatVersion(versions.busybox)}`);
-    console.log(`  python.wasm (micropython): ${formatVersion(versions.micropython)}`);
   });
 
 // install-runtime command
