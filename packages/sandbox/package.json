@@ -81,7 +81,7 @@
     "dist",
     "bin",
     "scripts",
-    "wasm",
+    "wasm/*.wasm",
     "README.md",
     "LICENSE"
   ]
