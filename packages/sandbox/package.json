@@ -55,7 +55,7 @@
     "node": ">=16.0.0"
   },
   "dependencies": {
-    "@agentskillmania/settings-yaml": "^0.1.0",
+    "@agentskillmania/settings-yaml": "^0.2.0",
     "adm-zip": "^0.5.10",
     "chalk": "^4.1.2",
     "commander": "^11.0.0",
