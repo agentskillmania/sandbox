@@ -1,6 +1,6 @@
 {
   "name": "@agentskillmania/sandbox-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "MCP server for @agentskillmania/sandbox - Execute code in WASM sandbox",
   "type": "module",
   "main": "./dist/server.js",
