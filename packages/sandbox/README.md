@@ -1,291 +1,98 @@
 # @agentskillmania/sandbox
 
-WASM sandbox for secure command execution in isolated environments.
+A WASM sandbox for executing shell commands, Python code, and Git operations in isolation. Runs as a single ~8MB binary under wasmtime, no Docker needed.
+
+## Why this instead of Docker
+
+| | Docker | @agentskillmania/sandbox |
+|---|---|---|
+| Binary size | ~1GB image | ~8MB wasm |
+| Startup time | ~100ms+ container create | ~55ms per command |
+| Daemon required | yes | no |
+| Filesystem isolation | container fs | wasmtime --dir mappings |
+
+~18x smaller, ~2x faster, zero daemon overhead.
 
 ## Features
 
-- 🚀 **Lightweight**: Single wasmtime process ~3MB vs Docker's ~1GB
-- ⚡ **Fast Execution**: ~12ms average command time vs Docker's ~100ms
-- 🔒 **Secure Isolation**: WASM sandbox with filesystem isolation via wasmtime `--dir` mappings
-- 🛠️ **Easy to Use**: CLI tool and Node.js SDK with a single `run(command)` interface
+- **Shell**: busybox wsh — ls, cat, grep, sed, awk, find, wc, sort, head, tail, pipes, variables, if/for, `&&`/`||`, command substitution
+- **Git**: libgit2 1.9.2 — clone, log, status, diff, commit, etc.
+- **Python**: MicroPython 1.27 with 30+ stdlib modules frozen in (see below)
+- **Network**: TCP/UDP sockets, DNS, TLS (mbedTLS), HTTP (requests library)
+- **Filesystem isolation**: only `/workspace` and `/tmp` visible, everything else blocked
 
-## Installation
+## Install
 
 ```bash
-npm install -g @agentskillmania/sandbox
+npm install @agentskillmania/sandbox
 ```
 
-### Automatic Runtime Installation
-
-When installing the npm package, wasmtime 43.0.0 is automatically installed to `~/.agentskillmania/sandbox/wasmtime/`.
-
-**Supported Platforms**:
-
-- macOS (x64, arm64) ✅
-- Linux (x64, arm64) ✅
-- Windows (x64, arm64) ✅
-
-**Manual Installation** (if automatic installation fails):
+wasmtime v43 is auto-installed to `~/.agentskillmania/sandbox/wasmtime/` on first use. If auto-install fails:
 
 ```bash
-exec-in-sandbox install-runtime
+npx exec-in-sandbox install-runtime
 ```
 
-**Proxy Support**:
-
-The installation script uses `curl` for downloads and reads these environment variables:
-
-- `HTTP_PROXY` / `http_proxy`
-- `HTTPS_PROXY` / `https_proxy`
-- `NO_PROXY` / `no_proxy`
-
-## Usage
-
-### CLI Syntax
+## CLI Usage
 
 ```bash
-exec-in-sandbox [OPTIONS] -- <command>
-```
-
-The `--` separator is required. Everything before `--` are CLI options; everything after `--` is the command string to execute in the sandbox.
-
-### CLI Examples
-
-```bash
-# Execute shell commands
+# Shell
 exec-in-sandbox -- "ls -la"
-exec-in-sandbox -- "cat file.txt"
-exec-in-sandbox -- "echo hello | grep h"
+exec-in-sandbox -- "cat file.txt | grep hello"
 
-# Execute Python code
-exec-in-sandbox -- "python -c \"print('hello from python')\""
-exec-in-sandbox -- "python -c \"import os; print(os.listdir('.'))\""
-
-# Execute Git commands
-exec-in-sandbox -- "git status"
-
-# Use shared filesystem
-exec-in-sandbox -- "echo 'print(42)' > script.py"
+# Python
+exec-in-sandbox -- "python -c 'print(42)'"
 exec-in-sandbox -- "python script.py"
 
-# Command-line options (before --)
-exec-in-sandbox --timeout=10000 --allow-network -- "curl https://example.com"
-exec-in-sandbox --sandbox-dir=./my-sandbox -- "ls -la"
+# Git
+exec-in-sandbox -- "git log --oneline"
 ```
 
-### Global Options
+The `--` separator is required: options before, command after.
 
-| CLI Option            | Description                                           |
-| --------------------- | ----------------------------------------------------- |
-| `--timeout <ms>`      | Execution timeout in milliseconds (default: `5000`)   |
-| `--sandbox-dir <dir>` | Sandbox directory (default: `auto` = system temp dir) |
-| `--allow-network`     | Allow network access (default: disabled)              |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--timeout <ms>` | 5000 | Execution timeout |
+| `--sandbox-dir <dir>` | auto temp | Host dir mapped to `/workspace` |
+| `--allow-network` | off | Enable network |
+| `--command-allowlist <cmds>` | - | Comma-separated allowlist |
+| `--command-blocklist <cmds>` | - | Comma-separated blocklist |
 
-### Node.js SDK
+## Programmatic Usage
 
 ```javascript
 import { Sandbox } from '@agentskillmania/sandbox';
 
-// Create sandbox instance
 const sandbox = new Sandbox({
-  sandboxDir: '.sandbox', // Shared filesystem directory
-  timeout: 5000, // Timeout (milliseconds)
-  allowNetwork: false, // Network access (default: false)
+  sandboxDir: '.sandbox',
+  timeout: 10000,
+  allowNetwork: false,
+  commandPolicy: { mode: 'blacklist', list: ['rm'] },
 });
 
-// Execute any command
-const result1 = await sandbox.run('ls -la');
-console.log(result1.stdout);
-
-// Execute Python code
-const result2 = await sandbox.run("python -c 'print(42)'");
-console.log(result2.stdout);
-
-// Execute Git commands
-const result3 = await sandbox.run('git status');
-console.log(result3.stdout);
-
-// Pass data via filesystem
-await sandbox.run('echo "data" > input.txt');
-const result4 = await sandbox.run('cat input.txt');
-console.log(result4.stdout);
+const result = await sandbox.run('python -c "print(42)"');
+console.log(result.stdout);   // "42"
+console.log(result.exitCode); // 0
 ```
 
-**Result format**:
+Returns `{ stdout: string, stderr: string, exitCode: number }`.
 
-```typescript
-interface ExecResult {
-  stdout: string; // Standard output
-  stderr: string; // Standard error (usually empty, merged into stdout)
-  exitCode: number; // Process exit code
-}
-```
+## Python Modules
 
-### Script Files
+**Built-in (C):** json, re, hashlib, math, cmath, random, os, sys, io, struct, gc, time, socket, select, errno, binascii, collections (deque, OrderedDict), heapq, array, deflate, uctypes, platform
 
-If the command argument ends with `.sh` or `.py`, the file content is read and executed:
-
-```javascript
-// Execute a shell script file
-const result = await sandbox.run('./script.sh');
-
-// Execute a Python script file
-const result = await sandbox.run('./script.py');
-```
+**Frozen (embedded in wasm):** datetime, itertools, functools, copy, types, string, base64, contextlib, logging, traceback, unittest, pprint, pickle, stat, operator, hmac, zlib, warnings, abc, bisect, fnmatch, shutil, tempfile, pathlib, gzip, asyncio, ssl, requests, collections.defaultdict
 
 ## Filesystem Isolation
 
-The sandbox uses wasmtime's `--dir` mappings to provide a controlled filesystem view:
+- `/workspace` → your sandbox directory (read-write)
+- `/tmp` → isolated temp dir per execution (auto-cleaned)
+- Everything else (`/etc`, `/home`, `../`) is blocked by wasmtime
 
-```
-/workspace  →  host sandbox directory (read-write)
-/tmp        →  host temp directory (read-write, per-execution isolated)
-```
+## Requirements
 
-- **`/workspace`**: The sandbox working directory. All file operations (unless using absolute paths) happen here.
-- **`/tmp`**: A unique temporary directory created for each execution and cleaned up afterward. Used internally for pipe operations.
-- **Everything else**: Unmounted and inaccessible. `../`, `/etc/passwd`, `/home`, etc. all return `No such file or directory` or `Operation not permitted`.
-
-**Security boundary**: The real isolation is enforced by wasmtime's directory mapping, not by command filtering.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     @agentskillmania/sandbox (Node.js)       │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │              Executor / Sandbox                      │  │
-│  │  - Validate command (placeholder, currently no-op)  │  │
-│  │  - Prefix: cd /workspace && <command>               │  │
-│  │  - Spawn wasmtime with isolated /tmp                │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                          ↓                                │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │            WasmRuntime (wasmtime)                   │  │
-│  │  - Spawn wasmtime process                           │  │
-│  │  - Map sandbox dir → /workspace                     │  │
-│  │  - Map isolated tmp → /tmp                          │  │
-│  └─────────────────────────────────────────────────────┘  │
-│                          ↓                                │
-│  ┌─────────────────────────────────────────────────────┐  │
-│  │              busybox.wasm (combined component)      │  │
-│  │  - wsh: shell interpreter                           │  │
-│  │  - git: version control                             │  │
-│  │  - python: Python interpreter                       │  │
-│  └─────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## How It Works
-
-1. **Unified Command Interface**: User passes a command string (`ls -la`, `python -c "print(42)"`, `git status`)
-2. **Directory Prefix**: Commands are automatically prefixed with `cd /workspace &&` so file operations happen in the sandbox directory
-3. **Isolated Execution**: Each execution spawns a new wasmtime process with an isolated `/tmp` directory
-4. **Cleanup**: The temporary `/tmp` directory is deleted after execution
-
-## Shell Features
-
-Shell scripts (`.sh` files) and inline shell code are executed via **wsh**, a WASM shell implementation embedded in busybox.wasm.
-
-### Supported Features
-
-- ✅ **Variables and expansion**: `X=hello; echo $X`
-- ✅ **Command substitution**: `echo $(echo inner)`
-- ✅ **Pipes**: `echo hello | tr a-z A-Z`
-- ✅ **Control flow**: `if/else`, `for` loops, `case` statements
-- ✅ **Logical operators**: `&&`, `||`
-- ✅ **Comments**: `# this is a comment`
-- ✅ **Newline separators**: commands can be on separate lines
-- ✅ **Arithmetic expansion**: `echo $((10 + 20))`
-
-### Known Limitations
-
-- ❌ **No function definitions** — `()` syntax not supported
-
-## Python Features
-
-The bundled Python interpreter (MicroPython) supports:
-
-| Module        | Supported Features                                                      |
-| ------------- | ----------------------------------------------------------------------- |
-| `socket`      | TCP client/server, `connect`, `bind`, `listen`, `accept`, `send`/`recv` |
-| `asyncio`     | async/await, event loops, locks, streams                                |
-| `json`        | `dumps`, `loads`                                                        |
-| `re`          | `match`, `search`, `sub`                                                |
-| `hashlib`     | `sha256`, `md5`                                                         |
-| `math`        | `pi`, `e`, `factorial`, `gamma`, `erf`                                  |
-| `random`      | `random()`, `randint()`, `choice()`                                     |
-| `time`        | `time()`, `time_ns()`, `gmtime()`, `localtime()`, `mktime()`            |
-| `sys`         | `exc_info()`, `atexit()`                                                |
-| `os`          | `listdir`, `mkdir`, `remove`, `stat`                                    |
-| `heapq`       | `heappush`, `heappop`, `heapify`                                        |
-| `collections` | `deque`, `OrderedDict`                                                  |
-
-**Network capabilities** (requires `--allow-network`):
-
-- ✅ TCP sockets (client and server)
-- ✅ DNS resolution
-- ❌ UDP sockets — unstable in wasmtime (may crash)
-- ❌ HTTPS/SSL — no TLS support
-
-## Performance
-
-Measured on Apple Silicon (M3 Pro), macOS 15:
-
-| Metric                  | @agentskillmania/sandbox |
-| ----------------------- | ------------------------ |
-| Sandbox Instance Create | ~0.1ms                   |
-| First Command Execution | ~60-130ms (WASM load + init, cached after first run) |
-| Shell Command (warmed)  | ~55ms                    |
-| Python Command (warmed) | ~55ms                    |
-| Memory Growth (50 runs) | ~0.3-3MB (depends on GC) |
-
-*Note: Each execution spawns a new wasmtime process. The ~55ms includes process spawn, WASM instantiation, command execution, and cleanup. This is significantly faster than Docker's ~100ms+ container startup, while providing comparable filesystem isolation.*
-
-## Security
-
-### Filesystem Isolation
-
-The primary security mechanism is wasmtime's directory isolation:
-
-- Only `/workspace` (sandbox directory) and `/tmp` (isolated temp) are visible
-- `../` path traversal is blocked by wasmtime (`Operation not permitted`)
-- Host system files (`/etc`, `/home`, etc.) are completely inaccessible
-
-### Command Security (Placeholder)
-
-A `SecurityPolicy` class exists as a hook for future enhancements but currently **allows all commands**. The real isolation comes from the filesystem boundary, not command filtering.
-
-### Network Security
-
-- Network is **disabled by default**
-- Enable with `--allow-network` or `allowNetwork: true`
-- When enabled, all network capabilities (TCP, DNS) are available
-- **Domain-level filtering is not implemented** — network is either fully on or fully off
-
-## Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Build
-pnpm run build
-
-# Run all tests
-pnpm run test
-
-# Run unit tests only
-pnpm run test:unit
-
-# Run integration tests only
-pnpm run test:integration
-```
-
-## Contributing
-
-Issues and Pull Requests are welcome!
+- Node.js >= 16
+- wasmtime v43+ (auto-installed)
 
 ## License
 

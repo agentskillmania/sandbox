@@ -1,14 +1,20 @@
 # @agentskillmania/sandbox-mcp
 
-MCP (Model Context Protocol) 服务器，用于在安全的 WASM 沙箱中执行 Shell 命令和 Python 代码。
+[@agentskillmania/sandbox](https://www.npmjs.com/package/@agentskillmania/sandbox) 的 MCP 服务器。提供 7 个工具，让 AI 智能体在 WASM 沙箱中执行 Shell 命令、Python 代码和文件操作。
 
-## 特性
+完整功能说明（Shell、Python 模块、文件系统隔离、网络能力）请查看 [sandbox 包](https://www.npmjs.com/package/@agentskillmania/sandbox)。
 
-- 🔒 **安全执行**：所有命令在 WASM 沙箱中运行，文件系统访问受控
-- ⚡ **快速执行**：使用 wasmtime 运行时，平均执行时间 ~12ms
-- 🛠️ **丰富的工具集**：7 个工具，涵盖 Shell、Python、脚本和文件操作
-- 🔧 **环境变量配置**：通过环境变量配置，无需配置文件
-- 🌐 **网络控制**：可选网络访问，开关控制
+## 工具
+
+| 工具 | 说明 |
+|------|------|
+| `run_shell` | 执行 Shell 命令 |
+| `run_python` | 执行 Python 代码 |
+| `run_script` | 执行 Shell 或 Python 脚本内容 |
+| `read_file` | 读取沙箱目录中的文件 |
+| `write_file` | 写入文件到沙箱目录 |
+| `list_files` | 列出沙箱目录中的文件 |
+| `delete_file` | 删除沙箱目录中的文件 |
 
 ## 安装
 
@@ -16,46 +22,9 @@ MCP (Model Context Protocol) 服务器，用于在安全的 WASM 沙箱中执行
 npm install @agentskillmania/sandbox-mcp
 ```
 
-## MCP 工具
-
-### Shell 执行
-
-- `run_shell` - 在 WASM 沙箱中执行 Shell 命令
-- `run_script` - 从内容执行 Shell/Python 脚本
-
-### Python 执行
-
-- `run_python` - 执行 Python 代码字符串
-
-### 文件操作
-
-- `read_file` - 读取沙箱目录中的文件
-- `write_file` - 写入文件到沙箱目录
-- `list_files` - 列出沙箱目录中的文件
-- `delete_file` - 删除沙箱目录中的文件
-
-## 配置
-
-通过环境变量配置：
-
-```bash
-# 基础设置
-export SANDBOX_TIMEOUT=5000
-export SANDBOX_ALLOW_NETWORK=false
-export SANDBOX_SANDBOX_DIR=".sandbox-mcp"
-
-# 注意：WASI preview2 不支持域名级别网络过滤。
-# 网络访问仅由 SANDBOX_ALLOW_NETWORK 开关控制。
-```
-
 ## 在 Claude Desktop 中使用
 
-添加到 Claude Desktop 配置文件：
-
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-
-### 推荐：npx（自动安装）
+添加到 `~/Library/Application Support/Claude/claude_desktop_config.json`：
 
 ```json
 {
@@ -72,138 +41,23 @@ export SANDBOX_SANDBOX_DIR=".sandbox-mcp"
 }
 ```
 
-### 替代：直接 node（本地开发）
+## 配置
 
-```json
-{
-  "mcpServers": {
-    "sandbox": {
-      "command": "node",
-      "args": ["./node_modules/@agentskillmania/sandbox-mcp/dist/index.js"],
-      "env": {
-        "SANDBOX_ALLOW_NETWORK": "true",
-        "SANDBOX_TIMEOUT": "10000"
-      }
-    }
-  }
-}
-```
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `SANDBOX_TIMEOUT` | 600000 | 超时时间（ms） |
+| `SANDBOX_ALLOW_NETWORK` | false | 启用网络 |
+| `SANDBOX_SANDBOX_DIR` | .sandbox-mcp | 沙箱目录 |
+| `SANDBOX_COMMAND_MODE` | - | `blacklist` 或 `whitelist` |
+| `SANDBOX_COMMAND_LIST` | - | 逗号分隔的命令列表 |
+| `SANDBOX_NETWORK_MODE` | - | `blacklist` 或 `whitelist` |
+| `SANDBOX_NETWORK_LIST` | - | 逗号分隔的域名列表 |
 
-## 工具 Schema
+## 运行要求
 
-### run_shell
-
-在 WASM 沙箱中执行 Shell 命令。
-
-```json
-{
-  "command": "ls -la",
-  "timeout": 5000,
-  "allowNetwork": false
-}
-```
-
-### run_python
-
-执行 Python 代码字符串。
-
-```json
-{
-  "code": "print('Hello from WASM!')\nprint(2 + 2)",
-  "timeout": 5000
-}
-```
-
-### run_script
-
-从内容执行 Shell 或 Python 脚本。
-
-```json
-{
-  "language": "sh",
-  "content": "#!/bin/sh\necho 'Hello World'\ndate",
-  "timeout": 5000
-}
-```
-
-### read_file
-
-读取沙箱目录中的文件。
-
-```json
-{
-  "path": "test.txt"
-}
-```
-
-### write_file
-
-写入内容到文件。
-
-```json
-{
-  "path": "output.txt",
-  "content": "Hello WASM!"
-}
-```
-
-### list_files
-
-列出沙箱目录中的文件。
-
-```json
-{
-  "path": "."
-}
-```
-
-### delete_file
-
-删除沙箱目录中的文件。
-
-```json
-{
-  "path": "temp.txt"
-}
-```
-
-## 安全
-
-### 文件系统隔离
-
-- 所有操作限制在沙箱目录内（默认：`.sandbox-mcp`）
-- 在 WASM 进程中映射为 `/workspace`
-- 无法访问父目录或系统文件（`../` 被 wasmtime 阻止）
-- 临时脚本执行后自动删除
-
-### 命令安全
-
-命令过滤当前是**占位符**，未来可能扩展。真正的安全边界是 wasmtime 的文件系统隔离。
-
-### 网络安全
-
-- 默认禁用，确保安全
-- 使用 `SANDBOX_ALLOW_NETWORK=true` 启用
-- WASI preview2 不支持域名级别过滤；网络要么全开，要么全关
-
-## 性能
-
-典型执行时间：
-
-- 简单 Shell 命令：~12ms
-- Python 打印语句：~15ms
-- 冷启动（首次执行）：~47ms
-
-## 要求
-
-- Node.js >= 16.0.0
-- wasmtime 43.0.0（自动安装）
-- macOS/Linux/Windows
+- Node.js >= 18
+- wasmtime v43+（自动安装）
 
 ## 许可证
 
 MIT
-
-## 相关包
-
-- [@agentskillmania/sandbox](../sandbox/) - 核心 WASM 沙箱库
