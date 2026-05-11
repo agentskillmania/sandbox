@@ -7,12 +7,10 @@ import { getWasmtimeExecutable } from '../../src/lib/runtime.js';
 describe('Sandbox Integration Tests', () => {
   let wasmtimePath: string;
   let busyboxExists: boolean;
-  let micropythonExists: boolean;
 
   beforeAll(() => {
     wasmtimePath = getWasmtimeExecutable();
     busyboxExists = existsSync('./wasm/busybox.wasm');
-    micropythonExists = existsSync('./wasm/micropython.wasm');
   });
 
   describe('wasmtime availability', () => {

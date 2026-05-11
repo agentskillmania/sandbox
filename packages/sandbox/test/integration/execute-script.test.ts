@@ -8,14 +8,12 @@ import { join } from 'node:path';
 describe('Script Execution Integration Tests', () => {
   let wasmtimePath: string;
   let busyboxExists: boolean;
-  let micropythonExists: boolean;
   const fixturesDir = join(process.cwd(), 'test/fixtures');
   const scriptsDir = join(fixturesDir, 'scripts');
 
   beforeAll(() => {
     wasmtimePath = getWasmtimeExecutable();
     busyboxExists = existsSync('./wasm/busybox.wasm');
-    micropythonExists = existsSync('./wasm/micropython.wasm');
   });
 
   describe('wasmtime availability', () => {
@@ -84,8 +82,8 @@ describe('Script Execution Integration Tests', () => {
 
   describe('Python script execution', () => {
     it('should execute simple Python script', async () => {
-      if (!micropythonExists) {
-        console.log('micropython.wasm not found, skipping test');
+      if (!busyboxExists) {
+        console.log('busybox.wasm not found, skipping test');
         return;
       }
 
@@ -101,8 +99,8 @@ describe('Script Execution Integration Tests', () => {
     }, 10000);
 
     it('should execute Python data processing script', async () => {
-      if (!micropythonExists) {
-        console.log('micropython.wasm not found, skipping test');
+      if (!busyboxExists) {
+        console.log('busybox.wasm not found, skipping test');
         return;
       }
 
@@ -155,7 +153,7 @@ describe('Script Execution Integration Tests', () => {
     }, 10000);
 
     it('should handle env wrapper shebang for Python', async () => {
-      if (!micropythonExists) {
+      if (!busyboxExists) {
         console.log('busybox.wasm not found, skipping test');
         return;
       }
@@ -173,8 +171,8 @@ describe('Script Execution Integration Tests', () => {
 
   describe('runPython SDK method', () => {
     it('should execute Python code string', async () => {
-      if (!micropythonExists) {
-        console.log('micropython.wasm not found, skipping test');
+      if (!busyboxExists) {
+        console.log('busybox.wasm not found, skipping test');
         return;
       }
 
@@ -188,8 +186,8 @@ describe('Script Execution Integration Tests', () => {
     }, 10000);
 
     it('should execute Python code with variables', async () => {
-      if (!micropythonExists) {
-        console.log('micropython.wasm not found, skipping test');
+      if (!busyboxExists) {
+        console.log('busybox.wasm not found, skipping test');
         return;
       }
 
@@ -205,8 +203,8 @@ describe('Script Execution Integration Tests', () => {
 
   describe('runPythonScript SDK method', () => {
     it('should execute Python script file', async () => {
-      if (!micropythonExists) {
-        console.log('micropython.wasm not found, skipping test');
+      if (!busyboxExists) {
+        console.log('busybox.wasm not found, skipping test');
         return;
       }
 
