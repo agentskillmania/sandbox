@@ -45,6 +45,7 @@ vi.mock('node:fs', () => ({
     }
     return '';
   }),
+  writeFileSync: vi.fn(),
   rmSync: vi.fn(),
 }));
 

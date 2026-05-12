@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { Sandbox } from '../../src/lib/Sandbox.js';
-import { existsSync } from 'node:fs';
+import { existsSync, copyFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { getWasmtimeExecutable } from '../../src/lib/runtime.js';
 import { join } from 'node:path';
@@ -208,10 +208,14 @@ describe('Script Execution Integration Tests', () => {
         return;
       }
 
-      const sandbox = new Sandbox({ sandboxDir: '.sandbox-test-script' });
+      const sandboxDir = '.sandbox-test-script';
+      const sandbox = new Sandbox({ sandboxDir });
       const scriptPath = join(scriptsDir, 'simple.py');
 
-      const result = await sandbox.run('python ' + scriptPath);
+      // Copy script into sandbox directory so it's accessible inside WASM
+      copyFileSync(scriptPath, join(sandboxDir, 'simple.py'));
+
+      const result = await sandbox.run('python /workspace/simple.py');
       console.log('STDOUT:', result.stdout);
 
       expect(result.exitCode).toBe(0);

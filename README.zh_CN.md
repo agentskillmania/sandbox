@@ -11,7 +11,7 @@
 - 轻量级 WASM 沙箱，支持 Shell 命令、Python 和 Git
 - Node.js SDK 和 CLI 接口
 - 自动安装运行时（wasmtime 43.0.0）
-- 平均执行时间 ~12ms
+- ~10ms/命令，8MB wasm 二进制，~50MB 峰值 RSS
 - 通过 wasmtime `--dir` 映射实现文件系统隔离
 
 **安装**: `npm install @agentskillmania/sandbox`
@@ -96,12 +96,19 @@ pnpm run test:integration
 
 ## 性能
 
-典型执行时间：
+在 Apple M 系列芯片上测量（wasmtime 43.0.0）：
 
-- Shell 命令: ~12ms
-- Python 代码: ~15ms
-- 冷启动: ~47ms
-- 内存占用: ~4MB 每沙箱实例
+| 操作 | 耗时 |
+|------|------|
+| 冷启动（首次运行） | ~100ms |
+| Shell 命令 | ~10ms |
+| Python 代码 | ~10ms |
+| 管道（`echo x \| grep y`） | ~10ms |
+| Git 命令 | ~10ms |
+| 每次调用峰值 RSS | ~50MB |
+| 二进制大小（busybox.wasm） | 8MB |
+
+每次调用都是全新隔离进程——运行之间无状态泄漏。
 
 ## 许可证
 

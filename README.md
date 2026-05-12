@@ -11,7 +11,7 @@ Core WASM sandbox library with CLI tool.
 - Lightweight WASM sandbox for shell commands, Python, and Git
 - Node.js SDK and CLI interface
 - Automatic runtime installation (wasmtime 43.0.0)
-- ~12ms average execution time
+- ~10ms per command, 8MB wasm binary, ~50MB peak RSS
 - Filesystem isolation via wasmtime `--dir` mappings
 
 **Install**: `npm install @agentskillmania/sandbox`
@@ -96,12 +96,19 @@ pnpm run test:integration
 
 ## Performance
 
-Typical execution times:
+Measured on Apple M-series (wasmtime 43.0.0):
 
-- Shell command: ~12ms
-- Python code: ~15ms
-- Cold start: ~47ms
-- Memory usage: ~4MB per sandbox instance
+| Operation | Time |
+|-----------|------|
+| Cold start (first run) | ~100ms |
+| Shell command | ~10ms |
+| Python code | ~10ms |
+| Pipe (`echo x \| grep y`) | ~10ms |
+| Git command | ~10ms |
+| Peak RSS per invocation | ~50MB |
+| Binary size (busybox.wasm) | 8MB |
+
+Every invocation is a fresh isolated process — no state leaks between runs.
 
 ## License
 

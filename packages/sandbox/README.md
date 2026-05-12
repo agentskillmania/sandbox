@@ -1,17 +1,20 @@
 # @agentskillmania/sandbox
 
-A WASM sandbox for executing shell commands, Python code, and Git operations in isolation. Runs as a single ~8MB binary under wasmtime, no Docker needed.
+A WASM sandbox for executing shell commands, Python code, and Git operations in isolation. Runs as a single 8MB binary under wasmtime, no Docker needed.
 
 ## Why this instead of Docker
 
 | | Docker | @agentskillmania/sandbox |
 |---|---|---|
-| Binary size | ~1GB image | ~8MB wasm |
-| Startup time | ~100ms+ container create | ~55ms per command |
-| Daemon required | yes | no |
-| Filesystem isolation | container fs | wasmtime --dir mappings |
+| Image size | ~1GB+ | **8MB** single wasm |
+| Cold start | 500ms–2s container create | **~100ms** |
+| Per command | ~100ms per command | **~10ms** |
+| Memory | ~50–200MB container RSS | **~50MB** |
+| Daemon required | yes (dockerd) | **no** |
+| Language runtime | install in Dockerfile | shell + Python + Git built-in |
+| Isolation | Linux namespaces | WASM capability-based (wasmtime) |
 
-~18x smaller, ~2x faster, zero daemon overhead.
+100x smaller, 10x faster, zero daemon.
 
 ## Features
 

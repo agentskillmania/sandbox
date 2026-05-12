@@ -1,17 +1,20 @@
 # @agentskillmania/sandbox
 
-WASM 沙箱，用于在隔离环境中执行 Shell 命令、Python 代码和 Git 操作。单个 ~8MB 二进制文件，通过 wasmtime 运行，不需要 Docker。
+WASM 沙箱，用于在隔离环境中执行 Shell 命令、Python 代码和 Git 操作。单个 8MB 二进制文件，通过 wasmtime 运行，不需要 Docker。
 
 ## 为什么不用 Docker
 
 | | Docker | @agentskillmania/sandbox |
 |---|---|---|
-| 体积 | ~1GB 镜像 | ~8MB wasm |
-| 启动时间 | ~100ms+ 容器创建 | ~55ms 每条命令 |
-| 需要守护进程 | 是 | 否 |
-| 文件系统隔离 | 容器 fs | wasmtime --dir 映射 |
+| 镜像体积 | ~1GB+ | **8MB** 单个 wasm |
+| 冷启动 | 500ms–2s 容器创建 | **~100ms** |
+| 每条命令 | ~100ms 每条命令 | **~10ms** |
+| 内存 | ~50–200MB 容器 RSS | **~50MB** |
+| 需要守护进程 | 是（dockerd） | **否** |
+| 语言运行时 | Dockerfile 内安装 | shell + Python + Git 内置 |
+| 隔离机制 | Linux namespaces | WASM capability-based（wasmtime） |
 
-体积小 ~18 倍，速度快 ~2 倍，零守护进程开销。
+体积小 100 倍，速度快 10 倍，零守护进程。
 
 ## 功能
 

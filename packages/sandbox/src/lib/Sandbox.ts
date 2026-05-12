@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -124,7 +124,7 @@ export class Sandbox {
   async run(command: string): Promise<ExecResult> {
     // Check if command is a script file path
     const trimmed = command.trim();
-    if (trimmed.endsWith('.sh') || trimmed.endsWith('.py')) {
+    if ((trimmed.endsWith('.sh') || trimmed.endsWith('.py')) && !trimmed.includes(' ')) {
       return this._runScriptFile(trimmed);
     }
 
@@ -157,7 +157,11 @@ export class Sandbox {
     }
 
     if (scriptPath.endsWith('.py')) {
-      return this._execWsh(`python -c '${scriptContent.replace(/'/g, "'\"'\"'")}'`);
+      const tmpScript = join(this.sandboxDir, '_sandbox_script.py');
+      writeFileSync(tmpScript, scriptContent);
+      const result = await this._execWsh('python /workspace/_sandbox_script.py');
+      rmSync(tmpScript, { force: true });
+      return result;
     }
 
     // .sh file
