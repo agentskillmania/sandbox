@@ -49,3 +49,4 @@ build/
 .vibe/
 
 *.cwasm
+/wasm/
