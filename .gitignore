@@ -47,5 +47,6 @@ build/
 
 # Vibe documents (working drafts)
 .vibe/
+.superpowers/
 
 *.cwasm
