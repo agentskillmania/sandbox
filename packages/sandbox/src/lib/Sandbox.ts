@@ -121,7 +121,7 @@ export class Sandbox {
    * If the command is a path to a script file (.sh or .py), the file content
    * is read and executed.
    */
-  async run(command: string): Promise<ExecResult> {
+  async run(command: string, options?: { stdin?: string }): Promise<ExecResult> {
     // Check if command is a script file path
     const trimmed = command.trim();
     if ((trimmed.endsWith('.sh') || trimmed.endsWith('.py')) && !trimmed.includes(' ')) {
@@ -134,7 +134,7 @@ export class Sandbox {
       this.securityPolicy.validate({ command: firstToken });
     }
 
-    return this._execWsh(command);
+    return this._execWsh(command, options?.stdin);
   }
 
   /**
@@ -171,7 +171,7 @@ export class Sandbox {
   /**
    * Execute a command via the sandbox WASM runtime.
    */
-  private async _execWsh(command: string): Promise<ExecResult> {
+  private async _execWsh(command: string, stdin?: string): Promise<ExecResult> {
     return new Promise((resolve, reject) => {
       const timeout = this.config.timeout;
       let stdout = '';
@@ -224,6 +224,14 @@ export class Sandbox {
 
       const proc = spawn(this.wasmtimePath, wasmtimeArgs);
 
+      // Pipe stdin content when provided (e.g. for `cat > file` write operations)
+      if (proc.stdin) {
+        if (stdin !== undefined) {
+          proc.stdin.write(stdin);
+        }
+        proc.stdin.end();
+      }
+
       const timer = setTimeout(() => {
         timedOut = true;
         proc.kill('SIGKILL');
@@ -244,8 +252,9 @@ export class Sandbox {
         if (timedOut) return;
 
         // wsh pipe output goes to stderr (freopen cannot restore stdout)
-        // merge stderr into stdout to match expected behavior
-        const finalStdout = stderr ? stdout + '\n' + stderr : stdout;
+        // merge stderr into stdout to match expected behavior.
+        // Only add separator when both are non-empty to avoid leading/trailing newlines.
+        const finalStdout = stdout && stderr ? stdout + '\n' + stderr : stdout || stderr;
 
         resolve({
           stdout: finalStdout,
