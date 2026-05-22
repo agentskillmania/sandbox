@@ -27,6 +27,14 @@ vi.mock('node:path', () => ({
 }));
 
 describe('Executor', () => {
+  const defaultConfig = {
+    wasmtimePath: '/mock/wasmtime',
+    busyboxPath: '/mock/busybox.wasm',
+    sandboxDir: 'auto' as const,
+    timeout: 5000,
+    allowNetwork: false,
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockSpawn.mockReturnValue({
@@ -44,14 +52,7 @@ describe('Executor', () => {
   });
 
   it('should execute command via wsh', async () => {
-    const executor = new Executor({
-      wasmtimePath: '/mock/wasmtime',
-      busyboxPath: '/mock/busybox.wasm',
-      sandboxDir: 'auto',
-      timeout: 5000,
-      allowNetwork: false,
-    });
-
+    const executor = new Executor(defaultConfig);
     await executor.exec({ command: 'ls -la' });
 
     const args = mockSpawn.mock.calls[0][1];
@@ -62,14 +63,7 @@ describe('Executor', () => {
   });
 
   it('should execute python command via wsh', async () => {
-    const executor = new Executor({
-      wasmtimePath: '/mock/wasmtime',
-      busyboxPath: '/mock/busybox.wasm',
-      sandboxDir: 'auto',
-      timeout: 5000,
-      allowNetwork: false,
-    });
-
+    const executor = new Executor(defaultConfig);
     await executor.exec({ command: "python -c 'print(42)'" });
 
     const args = mockSpawn.mock.calls[0][1];
@@ -80,14 +74,7 @@ describe('Executor', () => {
   });
 
   it('should execute git command via wsh', async () => {
-    const executor = new Executor({
-      wasmtimePath: '/mock/wasmtime',
-      busyboxPath: '/mock/busybox.wasm',
-      sandboxDir: 'auto',
-      timeout: 5000,
-      allowNetwork: false,
-    });
-
+    const executor = new Executor(defaultConfig);
     await executor.exec({ command: 'git status' });
 
     const args = mockSpawn.mock.calls[0][1];
@@ -98,45 +85,18 @@ describe('Executor', () => {
   });
 
   it('should include /tmp dir for all commands', async () => {
-    const executor = new Executor({
-      wasmtimePath: '/mock/wasmtime',
-      busyboxPath: '/mock/busybox.wasm',
-      sandboxDir: 'auto',
-      timeout: 5000,
-      allowNetwork: false,
-    });
-
+    const executor = new Executor(defaultConfig);
     await executor.exec({ command: 'ls' });
 
     const args = mockSpawn.mock.calls[0][1];
-    // /tmp is now mapped via an isolated per-instance directory
     expect(args.some((a: string) => a.includes('::/tmp'))).toBe(true);
-  });
-
-  it('should allow all commands regardless of command policy', async () => {
-    const executor = new Executor({
-      wasmtimePath: '/mock/wasmtime',
-      busyboxPath: '/mock/busybox.wasm',
-      sandboxDir: 'auto',
-      timeout: 5000,
-      allowNetwork: false,
-      commandPolicy: { mode: 'whitelist', list: ['ls'] },
-    });
-
-    // SecurityPolicy is currently a no-op; all commands are allowed.
-    const result = await executor.exec({ command: 'rm file' });
-    expect(result.exitCode).toBe(0);
   });
 
   it('should expose sandbox directory path', () => {
     const executor = new Executor({
-      wasmtimePath: '/mock/wasmtime',
-      busyboxPath: '/mock/busybox.wasm',
+      ...defaultConfig,
       sandboxDir: '/custom/sandbox',
-      timeout: 5000,
-      allowNetwork: false,
     });
-
     expect(executor.sandboxDirectory).toBe('/custom/sandbox');
   });
 
@@ -158,14 +118,7 @@ describe('Executor', () => {
       kill: vi.fn(),
     });
 
-    const executor = new Executor({
-      wasmtimePath: '/mock/wasmtime',
-      busyboxPath: '/mock/busybox.wasm',
-      sandboxDir: 'auto',
-      timeout: 5000,
-      allowNetwork: false,
-    });
-
+    const executor = new Executor(defaultConfig);
     const result = await executor.exec({ command: 'echo test' });
     expect(result.stdout).toContain('stdout output');
     expect(result.stdout).toContain('stderr output');

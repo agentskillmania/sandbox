@@ -97,9 +97,9 @@ describe('Sandbox', () => {
   });
 
   describe('constructor', () => {
-    it('should create instance with default config', () => {
+    it('should create instance with default auto sandboxDir', () => {
       const sb = new Sandbox();
-      expect(sb).toBeInstanceOf(Sandbox);
+      expect(sb.getSandboxDir()).toBe('/tmp/sandbox-12345');
     });
 
     it('should accept custom config', () => {
@@ -107,7 +107,7 @@ describe('Sandbox', () => {
         sandboxDir: '.custom-sandbox',
         timeout: 10000,
       });
-      expect(sb).toBeInstanceOf(Sandbox);
+      expect(sb.getSandboxDir()).toBe('.custom-sandbox');
     });
   });
 
@@ -115,19 +115,24 @@ describe('Sandbox', () => {
     it('should successfully execute simple shell command', async () => {
       const result = await sandbox.run('echo hello');
       expect(result.exitCode).toBe(0);
-      expect(mockSpawn).toHaveBeenCalled();
+      expect(result.stdout).toContain('test output');
+      const args = mockSpawn.mock.calls[0][1];
+      expect(args).toContain('wsh');
+      expect(args).toContain('cd /workspace && echo hello');
     });
 
     it('should execute python command', async () => {
       const result = await sandbox.run("python -c 'print(42)'");
       expect(result.exitCode).toBe(0);
-      expect(mockSpawn).toHaveBeenCalled();
+      const args = mockSpawn.mock.calls[0][1];
+      expect(args).toContain("cd /workspace && python -c 'print(42)'");
     });
 
     it('should execute git command', async () => {
       const result = await sandbox.run('git --version');
       expect(result.exitCode).toBe(0);
-      expect(mockSpawn).toHaveBeenCalled();
+      const args = mockSpawn.mock.calls[0][1];
+      expect(args).toContain('cd /workspace && git --version');
     });
 
     it('should allow all commands regardless of allowlist config', async () => {
@@ -221,9 +226,13 @@ describe('Sandbox', () => {
   describe('static methods', () => {
     it('should return runtime version information', () => {
       const versions = Sandbox.getRuntimeVersions();
-      expect(versions).toHaveProperty('wasmtime');
-      expect(versions).toHaveProperty('busybox');
-      expect(versions).not.toHaveProperty('micropython');
+      expect(versions.wasmtime).toEqual({
+        found: true,
+        version: '43.0.0',
+        path: '/mock/wasmtime',
+        expectedVersion: 'v43.0.0',
+      });
+      expect(versions.busybox).toEqual({ found: true, path: '/mock/busybox.wasm' });
     });
   });
 

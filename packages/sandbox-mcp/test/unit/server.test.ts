@@ -1,12 +1,12 @@
 /**
  * 单元测试：MCP 服务器
- * 测试服务器创建、工具列表和请求处理
+ * 测试服务器创建、配置传递和工具请求处理
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMCPServer } from '../../src/server.js';
+import { Sandbox } from '@agentskillmania/sandbox';
 
-// Mock Sandbox 类
 vi.mock('@agentskillmania/sandbox', () => ({
   Sandbox: vi.fn().mockImplementation(() => ({
     run: vi.fn().mockResolvedValue({
@@ -41,41 +41,57 @@ vi.mock('@agentskillmania/sandbox', () => ({
 }));
 
 describe('MCP Server: createMCPServer', () => {
-  it('should create server instance', () => {
-    const server = createMCPServer();
-    expect(server).toBeDefined();
-    expect(typeof server).toBe('object');
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('should create server with default config', () => {
+  it('should create server instance with default config', () => {
     const server = createMCPServer();
     expect(server).toBeDefined();
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeout: 600_000,
+        allowNetwork: false,
+        sandboxDir: '.sandbox-mcp',
+      })
+    );
   });
 
-  it('should create server with custom config', () => {
-    const customConfig = {
+  it('should pass custom config to sandbox', () => {
+    createMCPServer({
       timeout: 10000,
       allowNetwork: true,
       sandboxDir: '/custom/dir',
-    };
-    const server = createMCPServer(customConfig);
-    expect(server).toBeDefined();
+    });
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeout: 10000,
+        allowNetwork: true,
+        sandboxDir: '/custom/dir',
+      })
+    );
   });
 
-  it('should create server with command security config', () => {
-    const securityConfig = {
-      commandPolicy: { mode: 'whitelist' as const, list: ['ls', 'cat'] },
-    };
-    const server = createMCPServer(securityConfig);
-    expect(server).toBeDefined();
+  it('should pass command security config to sandbox', () => {
+    createMCPServer({
+      commandPolicy: { mode: 'whitelist', list: ['ls', 'cat'] },
+    });
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        commandPolicy: { mode: 'whitelist', list: ['ls', 'cat'] },
+      })
+    );
   });
 
-  it('should create server with network security config', () => {
-    const securityConfig = {
-      networkPolicy: { mode: 'blacklist' as const, list: ['example.com'] },
-    };
-    const server = createMCPServer(securityConfig);
-    expect(server).toBeDefined();
+  it('should pass network security config to sandbox', () => {
+    createMCPServer({
+      networkPolicy: { mode: 'blacklist', list: ['example.com'] },
+    });
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        networkPolicy: { mode: 'blacklist', list: ['example.com'] },
+      })
+    );
   });
 });
 
@@ -84,11 +100,14 @@ describe('MCP Server: environment config', () => {
 
   beforeEach(() => {
     originalEnv = { ...process.env };
-    // 清理环境变量
     delete process.env.SANDBOX_TIMEOUT;
     delete process.env.SANDBOX_ALLOW_NETWORK;
+    delete process.env.SANDBOX_SANDBOX_DIR;
     delete process.env.SANDBOX_COMMAND_MODE;
+    delete process.env.SANDBOX_COMMAND_LIST;
     delete process.env.SANDBOX_NETWORK_MODE;
+    delete process.env.SANDBOX_NETWORK_LIST;
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -97,41 +116,56 @@ describe('MCP Server: environment config', () => {
 
   it('should load timeout from env', () => {
     process.env.SANDBOX_TIMEOUT = '10000';
-    const server = createMCPServer();
-    expect(server).toBeDefined();
+    createMCPServer();
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({ timeout: 10000 })
+    );
   });
 
   it('should load allowNetwork from env', () => {
     process.env.SANDBOX_ALLOW_NETWORK = 'true';
-    const server = createMCPServer();
-    expect(server).toBeDefined();
+    createMCPServer();
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({ allowNetwork: true })
+    );
   });
 
   it('should load sandboxDir from env', () => {
     process.env.SANDBOX_SANDBOX_DIR = '/custom/sandbox';
-    const server = createMCPServer();
-    expect(server).toBeDefined();
+    createMCPServer();
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({ sandboxDir: '/custom/sandbox' })
+    );
   });
 
   it('should load command security from env', () => {
     process.env.SANDBOX_COMMAND_MODE = 'whitelist';
     process.env.SANDBOX_COMMAND_LIST = 'ls,cat,echo';
-    const server = createMCPServer();
-    expect(server).toBeDefined();
+    createMCPServer();
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        commandPolicy: { mode: 'whitelist', list: ['ls', 'cat', 'echo'] },
+      })
+    );
   });
 
   it('should load network security from env', () => {
     process.env.SANDBOX_NETWORK_MODE = 'blacklist';
     process.env.SANDBOX_NETWORK_LIST = 'example.com,test.com';
-    const server = createMCPServer();
-    expect(server).toBeDefined();
+    createMCPServer();
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        networkPolicy: { mode: 'blacklist', list: ['example.com', 'test.com'] },
+      })
+    );
   });
 
-  it('should combine user config with env config', () => {
+  it('should let user config override env config', () => {
     process.env.SANDBOX_TIMEOUT = '3000';
-    const userConfig = { timeout: 10000 };
-    const server = createMCPServer(userConfig);
-    expect(server).toBeDefined();
+    createMCPServer({ timeout: 10000 });
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
+      expect.objectContaining({ timeout: 10000 })
+    );
   });
 });
 
@@ -140,23 +174,12 @@ describe('MCP Server: tool handlers', () => {
     vi.clearAllMocks();
   });
 
-  it('should return tool list when requested', async () => {
-    const { checkRuntimeReady } = await import('@agentskillmania/sandbox');
-    vi.mocked(checkRuntimeReady).mockReturnValue({ ready: true });
-
-    const server = createMCPServer();
-    expect(server).toBeDefined();
-    // 服务器创建时会注册工具处理器
-  });
-
-  it('should check runtime before tool execution', async () => {
+  it('should check runtime before tool execution when not ready', async () => {
     const { checkRuntimeReady, ensureRuntime } = await import('@agentskillmania/sandbox');
     vi.mocked(checkRuntimeReady).mockReturnValue({ ready: false });
     vi.mocked(ensureRuntime).mockResolvedValue(undefined);
 
     const server = createMCPServer();
-
-    // Trigger the CallTool handler with runtime not ready
     const handler = (server as any)._requestHandlers.get('tools/call');
     const result = await handler({
       method: 'tools/call',
@@ -165,6 +188,7 @@ describe('MCP Server: tool handlers', () => {
 
     expect(vi.mocked(ensureRuntime)).toHaveBeenCalled();
     expect(result).toBeDefined();
+    expect(result.content).toBeDefined();
   });
 
   it('should skip ensureRuntime when runtime is ready', async () => {
@@ -172,7 +196,6 @@ describe('MCP Server: tool handlers', () => {
     vi.mocked(checkRuntimeReady).mockReturnValue({ ready: true });
 
     const server = createMCPServer();
-
     const handler = (server as any)._requestHandlers.get('tools/call');
     await handler({
       method: 'tools/call',
@@ -183,11 +206,7 @@ describe('MCP Server: tool handlers', () => {
   });
 
   it('should handle tool call with no arguments', async () => {
-    const { checkRuntimeReady } = await import('@agentskillmania/sandbox');
-    vi.mocked(checkRuntimeReady).mockReturnValue({ ready: true });
-
     const server = createMCPServer();
-
     const handler = (server as any)._requestHandlers.get('tools/call');
     const result = await handler({
       method: 'tools/call',
@@ -195,19 +214,6 @@ describe('MCP Server: tool handlers', () => {
     });
 
     expect(result).toBeDefined();
-  });
-});
-
-describe('MCP Server: server capabilities', () => {
-  it('should have tools capability', () => {
-    const server = createMCPServer();
-    expect(server).toBeDefined();
-    // 服务器应该有 tools 能力
-  });
-
-  it('should support request handlers', () => {
-    const server = createMCPServer();
-    expect(server).toBeDefined();
-    // 服务器应该支持 ListToolsRequestSchema 和 CallToolRequestSchema
+    expect(result.content).toBeDefined();
   });
 });

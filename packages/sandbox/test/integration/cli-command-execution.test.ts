@@ -1,16 +1,10 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { getWasmtimeExecutable } from '../../src/lib/runtime.js';
 
 describe('CLI Integration Tests', () => {
   const cliPath = join(process.cwd(), 'dist/cli/index.js');
-  let wasmtimeInstalled: boolean;
-
-  beforeAll(() => {
-    wasmtimeInstalled = existsSync(getWasmtimeExecutable());
-  });
 
   const runCli = (args: string[]): { stdout: string; stderr: string; exitCode: number } => {
     const result = spawnSync('node', [cliPath, ...args], {
@@ -58,12 +52,15 @@ describe('CLI Integration Tests', () => {
       const { stdout } = runCli(['--', '# comment\nX=5\necho $X']);
       expect(stdout.trim()).toBe('5');
     });
-  });
 
-  describe('micropython execution', () => {
-    it('should execute python -c print', () => {
+    it('should execute python command', () => {
       const { stdout } = runCli(['--', "python -c 'print(42)'"]);
       expect(stdout.trim()).toBe('42');
+    });
+
+    it('should execute git --version', () => {
+      const { stdout } = runCli(['--', 'git --version']);
+      expect(stdout).toContain('git');
     });
   });
 
@@ -91,6 +88,38 @@ describe('CLI Integration Tests', () => {
       expect(exitCode).not.toBe(0);
       const combined = stdout + stderr;
       expect(combined).toContain('applet not found');
+    });
+
+    it('should handle empty command', () => {
+      const { stderr, exitCode } = runCli(['--']);
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain('No command');
+    });
+
+    it('should handle missing busybox.wasm gracefully', () => {
+      if (!existsSync(join(process.cwd(), 'wasm', 'busybox.wasm'))) {
+        const { stderr, exitCode } = runCli(['--', 'ls']);
+        expect(exitCode).not.toBe(0);
+        expect(stderr).toMatch(/not found|does not exist/);
+      }
+    });
+  });
+
+  describe('help information', () => {
+    it('should show general help', () => {
+      const { stdout } = runCli(['--help']);
+      expect(stdout).toContain('exec-in-sandbox');
+      expect(stdout).toContain('unified WASM sandbox shell');
+    });
+
+    it('should show usage examples in help', () => {
+      const { stdout } = runCli(['--help']);
+      expect(stdout).toContain('Options');
+    });
+
+    it('should show all available commands', () => {
+      const { stdout } = runCli(['--help']);
+      expect(stdout).toContain('Commands');
     });
   });
 });

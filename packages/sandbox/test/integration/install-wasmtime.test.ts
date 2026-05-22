@@ -16,23 +16,11 @@ describe('Runtime Installation Integration Tests', () => {
     });
 
     it('should verify wasmtime version', () => {
-      if (!existsSync(wasmtimePath)) {
-        console.log('Wasmtime not installed, skipping version check');
-        return;
-      }
-
-      // Get version
       const version = execSync(`"${wasmtimePath}" --version`, { encoding: 'utf-8' });
       expect(version).toContain('43.0.0');
     });
 
     it('should verify wasmtime is executable', () => {
-      if (!existsSync(wasmtimePath)) {
-        console.log('Wasmtime not installed, skipping executable check');
-        return;
-      }
-
-      // Try to run wasmtime
       const result = execSync(`"${wasmtimePath}" --version`, {
         encoding: 'utf-8',
         stdio: 'pipe',
