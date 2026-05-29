@@ -6,9 +6,10 @@
  * Shell commands and Python code in a secure WASM sandbox.
  */
 
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { createMCPServer } from './server.js';
 import { ensureRuntime } from '@agentskillmania/sandbox';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+
+import { createMCPServer } from './server.js';
 
 async function main() {
   // 确保 runtime 已安装

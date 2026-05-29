@@ -1,6 +1,8 @@
-import { Settings } from '@agentskillmania/settings-yaml';
-import { join } from 'node:path';
 import { homedir } from 'node:os';
+import { join } from 'node:path';
+
+import { Settings } from '@agentskillmania/settings-yaml';
+
 import type { GlobalSecurityConfig } from './types.js';
 
 /**

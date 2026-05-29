@@ -1,14 +1,16 @@
+import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { randomUUID } from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { join } from 'node:path';
+
 import { mkdirp } from 'mkdirp';
-import type { ExecResult, SandboxConfig } from './types.js';
-import { TimeoutError } from './types.js';
+
 import { SecurityPolicy } from './core/security-policy.js';
 import { getWasmtimeExecutable, getWasmPaths, getRuntimeVersions } from './runtime.js';
+import type { ExecResult, SandboxConfig } from './types.js';
+import { TimeoutError } from './types.js';
 
 /**
  * Default configuration

@@ -6,15 +6,15 @@
 
 ## 工具
 
-| 工具 | 说明 |
-|------|------|
-| `run_shell` | 执行 Shell 命令 |
-| `run_python` | 执行 Python 代码 |
-| `run_script` | 执行 Shell 或 Python 脚本内容 |
-| `read_file` | 读取沙箱目录中的文件 |
-| `write_file` | 写入文件到沙箱目录 |
-| `list_files` | 列出沙箱目录中的文件 |
-| `delete_file` | 删除沙箱目录中的文件 |
+| 工具          | 说明                          |
+| ------------- | ----------------------------- |
+| `run_shell`   | 执行 Shell 命令               |
+| `run_python`  | 执行 Python 代码              |
+| `run_script`  | 执行 Shell 或 Python 脚本内容 |
+| `read_file`   | 读取沙箱目录中的文件          |
+| `write_file`  | 写入文件到沙箱目录            |
+| `list_files`  | 列出沙箱目录中的文件          |
+| `delete_file` | 删除沙箱目录中的文件          |
 
 ## 安装
 
@@ -43,15 +43,15 @@ npm install @agentskillmania/sandbox-mcp
 
 ## 配置
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `SANDBOX_TIMEOUT` | 600000 | 超时时间（ms） |
-| `SANDBOX_ALLOW_NETWORK` | false | 启用网络 |
-| `SANDBOX_SANDBOX_DIR` | .sandbox-mcp | 沙箱目录 |
-| `SANDBOX_COMMAND_MODE` | - | `blacklist` 或 `whitelist` |
-| `SANDBOX_COMMAND_LIST` | - | 逗号分隔的命令列表 |
-| `SANDBOX_NETWORK_MODE` | - | `blacklist` 或 `whitelist` |
-| `SANDBOX_NETWORK_LIST` | - | 逗号分隔的域名列表 |
+| 变量                    | 默认值       | 说明                       |
+| ----------------------- | ------------ | -------------------------- |
+| `SANDBOX_TIMEOUT`       | 600000       | 超时时间（ms）             |
+| `SANDBOX_ALLOW_NETWORK` | false        | 启用网络                   |
+| `SANDBOX_SANDBOX_DIR`   | .sandbox-mcp | 沙箱目录                   |
+| `SANDBOX_COMMAND_MODE`  | -            | `blacklist` 或 `whitelist` |
+| `SANDBOX_COMMAND_LIST`  | -            | 逗号分隔的命令列表         |
+| `SANDBOX_NETWORK_MODE`  | -            | `blacklist` 或 `whitelist` |
+| `SANDBOX_NETWORK_LIST`  | -            | 逗号分隔的域名列表         |
 
 ## 运行要求
 

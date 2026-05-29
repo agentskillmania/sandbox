@@ -6,15 +6,15 @@ See the [sandbox package](https://www.npmjs.com/package/@agentskillmania/sandbox
 
 ## Tools
 
-| Tool | Description |
-|------|-------------|
-| `run_shell` | Execute shell command |
-| `run_python` | Execute Python code |
-| `run_script` | Execute shell or Python script from content |
-| `read_file` | Read file from sandbox directory |
-| `write_file` | Write file to sandbox directory |
-| `list_files` | List files in sandbox directory |
-| `delete_file` | Delete file from sandbox directory |
+| Tool          | Description                                 |
+| ------------- | ------------------------------------------- |
+| `run_shell`   | Execute shell command                       |
+| `run_python`  | Execute Python code                         |
+| `run_script`  | Execute shell or Python script from content |
+| `read_file`   | Read file from sandbox directory            |
+| `write_file`  | Write file to sandbox directory             |
+| `list_files`  | List files in sandbox directory             |
+| `delete_file` | Delete file from sandbox directory          |
 
 ## Install
 
@@ -43,15 +43,15 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ## Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SANDBOX_TIMEOUT` | 600000 | Timeout in ms |
-| `SANDBOX_ALLOW_NETWORK` | false | Enable network |
-| `SANDBOX_SANDBOX_DIR` | .sandbox-mcp | Sandbox directory |
-| `SANDBOX_COMMAND_MODE` | - | `blacklist` or `whitelist` |
-| `SANDBOX_COMMAND_LIST` | - | Comma-separated command list |
-| `SANDBOX_NETWORK_MODE` | - | `blacklist` or `whitelist` |
-| `SANDBOX_NETWORK_LIST` | - | Comma-separated domain list |
+| Variable                | Default      | Description                  |
+| ----------------------- | ------------ | ---------------------------- |
+| `SANDBOX_TIMEOUT`       | 600000       | Timeout in ms                |
+| `SANDBOX_ALLOW_NETWORK` | false        | Enable network               |
+| `SANDBOX_SANDBOX_DIR`   | .sandbox-mcp | Sandbox directory            |
+| `SANDBOX_COMMAND_MODE`  | -            | `blacklist` or `whitelist`   |
+| `SANDBOX_COMMAND_LIST`  | -            | Comma-separated command list |
+| `SANDBOX_NETWORK_MODE`  | -            | `blacklist` or `whitelist`   |
+| `SANDBOX_NETWORK_LIST`  | -            | Comma-separated domain list  |
 
 ## Requirements
 

@@ -12,10 +12,11 @@
  */
 
 import { spawn, execSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import type { ExecResult } from './types.js';
 import { TimeoutError } from '../types.js';
 

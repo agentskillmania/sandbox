@@ -11,9 +11,9 @@
  * This includes shell commands, python scripts, and git operations.
  */
 
-import type { ExecutionRequest, ExecResult, ExecutorConfig } from './types.js';
-import { SecurityPolicy } from './security-policy.js';
 import { SandboxDirectory } from './sandbox-dir.js';
+import { SecurityPolicy } from './security-policy.js';
+import type { ExecutionRequest, ExecResult, ExecutorConfig } from './types.js';
 import { WasmRuntime } from './wasm-runtime.js';
 
 export class Executor {

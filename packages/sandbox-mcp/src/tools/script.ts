@@ -3,9 +3,10 @@
  * 执行脚本（支持传入内容）
  */
 
-import { Sandbox } from '@agentskillmania/sandbox';
 import { writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
+
+import { Sandbox } from '@agentskillmania/sandbox';
 
 export const runScriptTool = {
   definition: {

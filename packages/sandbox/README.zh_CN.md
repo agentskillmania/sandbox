@@ -4,15 +4,15 @@ WASM 沙箱，用于在隔离环境中执行 Shell 命令、Python 代码和 Git
 
 ## 为什么不用 Docker
 
-| | Docker | @agentskillmania/sandbox |
-|---|---|---|
-| 镜像体积 | ~1GB+ | **8MB** 单个 wasm |
-| 冷启动 | 500ms–2s 容器创建 | **~100ms** |
-| 每条命令 | ~100ms 每条命令 | **~10ms** |
-| 内存 | ~50–200MB 容器 RSS | **~50MB** |
-| 需要守护进程 | 是（dockerd） | **否** |
-| 语言运行时 | Dockerfile 内安装 | shell + Python + Git 内置 |
-| 隔离机制 | Linux namespaces | WASM capability-based（wasmtime） |
+|              | Docker             | @agentskillmania/sandbox          |
+| ------------ | ------------------ | --------------------------------- |
+| 镜像体积     | ~1GB+              | **8MB** 单个 wasm                 |
+| 冷启动       | 500ms–2s 容器创建  | **~100ms**                        |
+| 每条命令     | ~100ms 每条命令    | **~10ms**                         |
+| 内存         | ~50–200MB 容器 RSS | **~50MB**                         |
+| 需要守护进程 | 是（dockerd）      | **否**                            |
+| 语言运行时   | Dockerfile 内安装  | shell + Python + Git 内置         |
+| 隔离机制     | Linux namespaces   | WASM capability-based（wasmtime） |
 
 体积小 100 倍，速度快 10 倍，零守护进程。
 
@@ -53,13 +53,13 @@ exec-in-sandbox -- "git log --oneline"
 
 `--` 分隔符是必需的：选项在前，命令在后。
 
-| 选项 | 默认值 | 说明 |
-|------|--------|------|
-| `--timeout <ms>` | 5000 | 执行超时时间 |
-| `--sandbox-dir <dir>` | 自动临时目录 | 映射到 `/workspace` 的宿主目录 |
-| `--allow-network` | 关闭 | 启用网络 |
-| `--command-allowlist <cmds>` | - | 逗号分隔的白名单 |
-| `--command-blocklist <cmds>` | - | 逗号分隔的黑名单 |
+| 选项                         | 默认值       | 说明                           |
+| ---------------------------- | ------------ | ------------------------------ |
+| `--timeout <ms>`             | 5000         | 执行超时时间                   |
+| `--sandbox-dir <dir>`        | 自动临时目录 | 映射到 `/workspace` 的宿主目录 |
+| `--allow-network`            | 关闭         | 启用网络                       |
+| `--command-allowlist <cmds>` | -            | 逗号分隔的白名单               |
+| `--command-blocklist <cmds>` | -            | 逗号分隔的黑名单               |
 
 ## 编程使用
 
@@ -74,7 +74,7 @@ const sandbox = new Sandbox({
 });
 
 const result = await sandbox.run('python -c "print(42)"');
-console.log(result.stdout);   // "42"
+console.log(result.stdout); // "42"
 console.log(result.exitCode); // 0
 ```
 

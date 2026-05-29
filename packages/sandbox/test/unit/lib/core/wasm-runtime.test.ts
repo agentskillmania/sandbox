@@ -53,9 +53,7 @@ describe('WasmRuntime', () => {
       throw new Error('mock: no wasmtime');
     });
     // Default: existsSync returns false for .cwasm paths
-    mockExistsSync.mockImplementation(
-      (p: string) => !p.endsWith('.cwasm')
-    );
+    mockExistsSync.mockImplementation((p: string) => !p.endsWith('.cwasm'));
   });
 
   // --- existing tests (JIT fallback path) ---
@@ -158,9 +156,7 @@ describe('WasmRuntime', () => {
       allowNetwork: false,
     });
 
-    await expect(
-      wasm.spawn('/mock/busybox.wasm', ['sleep', '10'])
-    ).rejects.toThrow('timeout');
+    await expect(wasm.spawn('/mock/busybox.wasm', ['sleep', '10'])).rejects.toThrow('timeout');
   });
 
   // --- AOT compilation tests ---
@@ -269,9 +265,7 @@ describe('WasmRuntime', () => {
   // --- error handling and edge cases ---
 
   it('should reject when wasm module not found', async () => {
-    mockExistsSync.mockImplementation(
-      (p: string) => p === '/mock/wasmtime'
-    );
+    mockExistsSync.mockImplementation((p: string) => p === '/mock/wasmtime');
 
     const wasm = new WasmRuntime({
       wasmtimePath: '/mock/wasmtime',
@@ -280,15 +274,11 @@ describe('WasmRuntime', () => {
       allowNetwork: false,
     });
 
-    await expect(
-      wasm.spawn('/nonexistent.wasm', ['ls'])
-    ).rejects.toThrow('WASM module not found');
+    await expect(wasm.spawn('/nonexistent.wasm', ['ls'])).rejects.toThrow('WASM module not found');
   });
 
   it('should reject when wasmtime not found', async () => {
-    mockExistsSync.mockImplementation(
-      (p: string) => p === '/mock/busybox.wasm'
-    );
+    mockExistsSync.mockImplementation((p: string) => p === '/mock/busybox.wasm');
 
     const wasm = new WasmRuntime({
       wasmtimePath: '/nonexistent/wasmtime',
@@ -297,9 +287,7 @@ describe('WasmRuntime', () => {
       allowNetwork: false,
     });
 
-    await expect(
-      wasm.spawn('/mock/busybox.wasm', ['ls'])
-    ).rejects.toThrow('Wasmtime not found');
+    await expect(wasm.spawn('/mock/busybox.wasm', ['ls'])).rejects.toThrow('Wasmtime not found');
   });
 
   it('should collect stdout output', async () => {
@@ -357,8 +345,7 @@ describe('WasmRuntime', () => {
       stdout: { on: vi.fn() },
       stderr: { on: vi.fn() },
       on: vi.fn((event: string, callback: Function) => {
-        if (event === 'error')
-          setImmediate(() => callback(new Error('spawn ENOENT')));
+        if (event === 'error') setImmediate(() => callback(new Error('spawn ENOENT')));
       }),
       kill: vi.fn(),
     });
@@ -370,9 +357,7 @@ describe('WasmRuntime', () => {
       allowNetwork: false,
     });
 
-    await expect(
-      wasm.spawn('/mock/busybox.wasm', ['ls'])
-    ).rejects.toThrow('spawn ENOENT');
+    await expect(wasm.spawn('/mock/busybox.wasm', ['ls'])).rejects.toThrow('spawn ENOENT');
   });
 
   it('should not resolve after timeout kill', async () => {

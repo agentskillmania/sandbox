@@ -4,7 +4,9 @@ import { Executor } from '../../../../src/lib/core/executor.js';
 const mockSpawn = vi.fn();
 vi.mock('node:child_process', () => ({
   spawn: (...args: any[]) => mockSpawn(...args),
-  execSync: vi.fn(() => { throw new Error('mock: no wasmtime'); }),
+  execSync: vi.fn(() => {
+    throw new Error('mock: no wasmtime');
+  }),
 }));
 
 vi.mock('node:fs', () => ({

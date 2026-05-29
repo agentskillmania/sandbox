@@ -117,9 +117,7 @@ describe('MCP Server: environment config', () => {
   it('should load timeout from env', () => {
     process.env.SANDBOX_TIMEOUT = '10000';
     createMCPServer();
-    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
-      expect.objectContaining({ timeout: 10000 })
-    );
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(expect.objectContaining({ timeout: 10000 }));
   });
 
   it('should load allowNetwork from env', () => {
@@ -163,9 +161,7 @@ describe('MCP Server: environment config', () => {
   it('should let user config override env config', () => {
     process.env.SANDBOX_TIMEOUT = '3000';
     createMCPServer({ timeout: 10000 });
-    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(
-      expect.objectContaining({ timeout: 10000 })
-    );
+    expect(vi.mocked(Sandbox)).toHaveBeenCalledWith(expect.objectContaining({ timeout: 10000 }));
   });
 });
 

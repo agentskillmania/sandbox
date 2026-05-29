@@ -98,15 +98,15 @@ pnpm run test:integration
 
 在 Apple M 系列芯片上测量（wasmtime 43.0.0）：
 
-| 操作 | 耗时 |
-|------|------|
-| 冷启动（首次运行） | ~100ms |
-| Shell 命令 | ~10ms |
-| Python 代码 | ~10ms |
-| 管道（`echo x \| grep y`） | ~10ms |
-| Git 命令 | ~10ms |
-| 每次调用峰值 RSS | ~50MB |
-| 二进制大小（busybox.wasm） | 8MB |
+| 操作                       | 耗时   |
+| -------------------------- | ------ |
+| 冷启动（首次运行）         | ~100ms |
+| Shell 命令                 | ~10ms  |
+| Python 代码                | ~10ms  |
+| 管道（`echo x \| grep y`） | ~10ms  |
+| Git 命令                   | ~10ms  |
+| 每次调用峰值 RSS           | ~50MB  |
+| 二进制大小（busybox.wasm） | 8MB    |
 
 每次调用都是全新隔离进程——运行之间无状态泄漏。
 

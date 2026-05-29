@@ -6,8 +6,9 @@
  */
 
 import { existsSync, mkdtempSync } from 'node:fs';
-import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { mkdirp } from 'mkdirp';
 
 export interface SandboxDirConfig {

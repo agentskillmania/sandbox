@@ -13,11 +13,13 @@
  *   exec-in-sandbox -- "cat file.txt | grep hello"
  */
 
-import { Command } from 'commander';
-import chalk from 'chalk';
 import { createRequire } from 'node:module';
-import { Executor } from '../lib/core/executor.js';
+
+import chalk from 'chalk';
+import { Command } from 'commander';
+
 import { initializeSecurityConfig } from '../lib/config.js';
+import { Executor } from '../lib/core/executor.js';
 import { getRuntimeVersions, getWasmtimeExecutable, getWasmPaths } from '../lib/runtime.js';
 
 const require = createRequire(import.meta.url);

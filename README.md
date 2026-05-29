@@ -98,15 +98,15 @@ pnpm run test:integration
 
 Measured on Apple M-series (wasmtime 43.0.0):
 
-| Operation | Time |
-|-----------|------|
-| Cold start (first run) | ~100ms |
-| Shell command | ~10ms |
-| Python code | ~10ms |
-| Pipe (`echo x \| grep y`) | ~10ms |
-| Git command | ~10ms |
-| Peak RSS per invocation | ~50MB |
-| Binary size (busybox.wasm) | 8MB |
+| Operation                  | Time   |
+| -------------------------- | ------ |
+| Cold start (first run)     | ~100ms |
+| Shell command              | ~10ms  |
+| Python code                | ~10ms  |
+| Pipe (`echo x \| grep y`)  | ~10ms  |
+| Git command                | ~10ms  |
+| Peak RSS per invocation    | ~50MB  |
+| Binary size (busybox.wasm) | 8MB    |
 
 Every invocation is a fresh isolated process — no state leaks between runs.
 

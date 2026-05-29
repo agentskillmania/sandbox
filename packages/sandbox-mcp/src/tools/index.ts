@@ -3,10 +3,11 @@
  */
 
 import { Sandbox } from '@agentskillmania/sandbox';
-import { runShellTool } from './shell.js';
+
+import { readFileTool, writeFileTool, listFilesTool, deleteFileTool } from './file.js';
 import { runPythonTool } from './python.js';
 import { runScriptTool } from './script.js';
-import { readFileTool, writeFileTool, listFilesTool, deleteFileTool } from './file.js';
+import { runShellTool } from './shell.js';
 
 export function createToolHandlers(sandbox: Sandbox) {
   return {

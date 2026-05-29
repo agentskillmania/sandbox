@@ -4,15 +4,15 @@ A WASM sandbox for executing shell commands, Python code, and Git operations in 
 
 ## Why this instead of Docker
 
-| | Docker | @agentskillmania/sandbox |
-|---|---|---|
-| Image size | ~1GB+ | **8MB** single wasm |
-| Cold start | 500ms–2s container create | **~100ms** |
-| Per command | ~100ms per command | **~10ms** |
-| Memory | ~50–200MB container RSS | **~50MB** |
-| Daemon required | yes (dockerd) | **no** |
-| Language runtime | install in Dockerfile | shell + Python + Git built-in |
-| Isolation | Linux namespaces | WASM capability-based (wasmtime) |
+|                  | Docker                    | @agentskillmania/sandbox         |
+| ---------------- | ------------------------- | -------------------------------- |
+| Image size       | ~1GB+                     | **8MB** single wasm              |
+| Cold start       | 500ms–2s container create | **~100ms**                       |
+| Per command      | ~100ms per command        | **~10ms**                        |
+| Memory           | ~50–200MB container RSS   | **~50MB**                        |
+| Daemon required  | yes (dockerd)             | **no**                           |
+| Language runtime | install in Dockerfile     | shell + Python + Git built-in    |
+| Isolation        | Linux namespaces          | WASM capability-based (wasmtime) |
 
 100x smaller, 10x faster, zero daemon.
 
@@ -53,13 +53,13 @@ exec-in-sandbox -- "git log --oneline"
 
 The `--` separator is required: options before, command after.
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--timeout <ms>` | 5000 | Execution timeout |
-| `--sandbox-dir <dir>` | auto temp | Host dir mapped to `/workspace` |
-| `--allow-network` | off | Enable network |
-| `--command-allowlist <cmds>` | - | Comma-separated allowlist |
-| `--command-blocklist <cmds>` | - | Comma-separated blocklist |
+| Option                       | Default   | Description                     |
+| ---------------------------- | --------- | ------------------------------- |
+| `--timeout <ms>`             | 5000      | Execution timeout               |
+| `--sandbox-dir <dir>`        | auto temp | Host dir mapped to `/workspace` |
+| `--allow-network`            | off       | Enable network                  |
+| `--command-allowlist <cmds>` | -         | Comma-separated allowlist       |
+| `--command-blocklist <cmds>` | -         | Comma-separated blocklist       |
 
 ## Programmatic Usage
 
@@ -74,7 +74,7 @@ const sandbox = new Sandbox({
 });
 
 const result = await sandbox.run('python -c "print(42)"');
-console.log(result.stdout);   // "42"
+console.log(result.stdout); // "42"
 console.log(result.exitCode); // 0
 ```
 

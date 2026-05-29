@@ -258,9 +258,7 @@ describe('Sandbox', () => {
 
   describe('directory creation', () => {
     it('should create sandbox directory when it does not exist', () => {
-      vi.mocked(existsSync).mockImplementation(
-        (p: string) => !p.startsWith('/custom')
-      );
+      vi.mocked(existsSync).mockImplementation((p: string) => !p.startsWith('/custom'));
 
       new Sandbox({ sandboxDir: '/custom/newdir' });
       expect(vi.mocked(mkdirp.sync)).toHaveBeenCalledWith('/custom/newdir');
@@ -269,18 +267,14 @@ describe('Sandbox', () => {
 
   describe('error handling - missing runtime', () => {
     it('should reject when busybox not found', async () => {
-      vi.mocked(existsSync).mockImplementation(
-        (p: string) => p !== '/mock/busybox.wasm'
-      );
+      vi.mocked(existsSync).mockImplementation((p: string) => p !== '/mock/busybox.wasm');
 
       const sb = new Sandbox({ timeout: 5000 });
       await expect(sb.run('echo test')).rejects.toThrow('WASM module not found');
     });
 
     it('should reject when wasmtime not found', async () => {
-      vi.mocked(existsSync).mockImplementation(
-        (p: string) => p !== '/mock/wasmtime'
-      );
+      vi.mocked(existsSync).mockImplementation((p: string) => p !== '/mock/wasmtime');
 
       const sb = new Sandbox({ timeout: 5000 });
       await expect(sb.run('echo test')).rejects.toThrow('Wasmtime not found');
