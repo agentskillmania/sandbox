@@ -126,4 +126,63 @@ describe('Executor', () => {
     expect(result.stdout).toContain('stderr output');
     expect(result.stderr).toBe('');
   });
+
+  it('should propagate timeout error from WasmRuntime', async () => {
+    mockSpawn.mockReturnValue({
+      stdout: { on: vi.fn() },
+      stderr: { on: vi.fn() },
+      on: vi.fn(),
+      kill: vi.fn(),
+    });
+
+    const executor = new Executor({ ...defaultConfig, timeout: 50 });
+    await expect(executor.exec({ command: 'sleep 10' })).rejects.toThrow('timeout');
+  });
+
+  it('should propagate spawn process error', async () => {
+    mockSpawn.mockReturnValue({
+      stdout: { on: vi.fn() },
+      stderr: { on: vi.fn() },
+      on: vi.fn((event: string, callback: Function) => {
+        if (event === 'error') setImmediate(() => callback(new Error('ENOENT: wasmtime not found')));
+      }),
+      kill: vi.fn(),
+    });
+
+    const executor = new Executor(defaultConfig);
+    await expect(executor.exec({ command: 'ls' })).rejects.toThrow('ENOENT');
+  });
+
+  it('should handle empty command string', async () => {
+    // Empty command passes through WasmRuntime as a shell call with empty string
+    mockSpawn.mockReturnValue({
+      stdout: {
+        on: vi.fn((e, cb) => {
+          if (e === 'data') cb(Buffer.from(''));
+        }),
+      },
+      stderr: { on: vi.fn() },
+      on: vi.fn((event, callback) => {
+        if (event === 'close') setImmediate(() => callback(0));
+      }),
+      kill: vi.fn(),
+    });
+
+    const executor = new Executor(defaultConfig);
+    const result = await executor.exec({ command: '' });
+    expect(result).toBeDefined();
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('should propagate WasmRuntime module-not-found error', async () => {
+    // Make existsSync return false for the busybox module path
+    const { existsSync } = await import('node:fs');
+    vi.mocked(existsSync).mockImplementation((p: string) => {
+      if (typeof p === 'string' && p.endsWith('busybox.wasm')) return false;
+      return true;
+    });
+
+    const executor = new Executor(defaultConfig);
+    await expect(executor.exec({ command: 'ls' })).rejects.toThrow('WASM module not found');
+  });
 });

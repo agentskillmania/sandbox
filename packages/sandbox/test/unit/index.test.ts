@@ -63,6 +63,30 @@ describe('Module exports', () => {
     expect(ConfigError.prototype).toBeInstanceOf(Error);
   });
 
+  it('should construct SecurityError with correct name and message', async () => {
+    const { SecurityError } = await import('../../src/index.js');
+    const err = new SecurityError('Access denied');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('SecurityError');
+    expect(err.message).toBe('Access denied');
+  });
+
+  it('should construct ConfigError with correct name and message', async () => {
+    const { ConfigError } = await import('../../src/index.js');
+    const err = new ConfigError('Invalid config');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('ConfigError');
+    expect(err.message).toBe('Invalid config');
+  });
+
+  it('should construct TimeoutError with correct name and message', async () => {
+    const { TimeoutError } = await import('../../src/index.js');
+    const err = new TimeoutError('Timed out');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('TimeoutError');
+    expect(err.message).toBe('Timed out');
+  });
+
   it('should export TypeScript types', async () => {
     // 类型导出测试（编译时检查）
     // 从 src/lib/types.js 导入类型进行验证

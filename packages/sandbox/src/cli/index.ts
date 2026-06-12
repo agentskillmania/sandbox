@@ -43,41 +43,86 @@ program
   .option('--network-blocklist <domains>', 'Network blocklist (comma-separated)')
   .argument('[command]', 'Command to execute after --');
 
+export interface CLIOptions {
+  timeout: string;
+  sandboxDir?: string;
+  allowNetwork?: string | boolean;
+  commandAllowlist?: string;
+  commandBlocklist?: string;
+  networkAllowlist?: string;
+  networkBlocklist?: string;
+}
+
+/**
+ * Execute a command via the sandbox CLI.
+ * Extracted from Commander action handler for testability.
+ */
+export async function executeCommand(command: string | undefined, options: CLIOptions): Promise<void> {
+  if (!command || command.length === 0) {
+    console.error(chalk.red('Error: No command specified'));
+    console.error('Usage: exec-in-sandbox [options] -- <command>');
+    console.error('  exec-in-sandbox -- "ls -la"');
+    console.error('  exec-in-sandbox -- "python -c \'print(42)\'"');
+    console.error('  exec-in-sandbox -- "git status"');
+    process.exit(1);
+    return; // unreachable in production, guards against mocked exit in tests
+  }
+
+  const securityConfig = await initializeSecurityConfig();
+  const commandSecurity = securityConfig.getCommandSecurity();
+
+  const commandPolicy =
+    commandSecurity.mode && commandSecurity.list && commandSecurity.list.length > 0
+      ? { mode: commandSecurity.mode, list: commandSecurity.list }
+      : undefined;
+
+  const wasmPaths = getWasmPaths();
+
+  const executor = new Executor({
+    wasmtimePath: getWasmtimeExecutable(),
+    busyboxPath: wasmPaths.busybox,
+    sandboxDir: options.sandboxDir || 'auto',
+    timeout: parseInt(options.timeout),
+    allowNetwork: options.allowNetwork ? options.allowNetwork !== 'false' : false,
+    commandPolicy,
+  });
+
+  const result = await executor.exec({ command });
+
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  process.exit(result.exitCode);
+  // unreachable in production — return guards against mocked exit in tests
+}
+
+/**
+ * Display runtime version information.
+ */
+export async function showVersion(): Promise<void> {
+  const versions = getRuntimeVersions();
+  console.log(chalk.bold(`@agentskillmania/sandbox version: ${pkg.version}\n`));
+  console.log(chalk.bold('Runtimes:'));
+  console.log(`  wasmtime: ${formatVersion(versions.wasmtime)}`);
+  console.log(`  busybox.wasm: ${formatVersion(versions.busybox)}`);
+}
+
+/**
+ * Install wasmtime runtime.
+ */
+export async function installRuntimeCommand(): Promise<void> {
+  const { installRuntime } = await import('../../scripts/install-runtime.cjs');
+  const success = await installRuntime();
+  process.exit(success ? 0 : 1);
+}
+
+export function formatVersion(info: { found: boolean; version?: string; path?: string }): string {
+  if (!info.found) return chalk.red('not found');
+  return chalk.green(`${info.version} (${info.path})`);
+}
+
 program.action(async (command, options) => {
   try {
-    if (!command || command.length === 0) {
-      console.error(chalk.red('Error: No command specified'));
-      console.error('Usage: exec-in-sandbox [options] -- <command>');
-      console.error('  exec-in-sandbox -- "ls -la"');
-      console.error('  exec-in-sandbox -- "python -c \'print(42)\'"');
-      console.error('  exec-in-sandbox -- "git status"');
-      process.exit(1);
-    }
-
-    const securityConfig = await initializeSecurityConfig();
-    const commandSecurity = securityConfig.getCommandSecurity();
-
-    const commandPolicy =
-      commandSecurity.mode && commandSecurity.list && commandSecurity.list.length > 0
-        ? { mode: commandSecurity.mode, list: commandSecurity.list }
-        : undefined;
-
-    const wasmPaths = getWasmPaths();
-
-    const executor = new Executor({
-      wasmtimePath: getWasmtimeExecutable(),
-      busyboxPath: wasmPaths.busybox,
-      sandboxDir: options.sandboxDir || 'auto',
-      timeout: parseInt(options.timeout),
-      allowNetwork: options.allowNetwork || false,
-      commandPolicy,
-    });
-
-    const result = await executor.exec({ command });
-
-    if (result.stdout) process.stdout.write(result.stdout);
-    if (result.stderr) process.stderr.write(result.stderr);
-    process.exit(result.exitCode);
+    await executeCommand(command, options);
   } catch (error: any) {
     if (error.name === 'SecurityError') {
       console.error(chalk.red('Security Error:'), error.message);
@@ -94,27 +139,12 @@ program.action(async (command, options) => {
 program
   .command('version')
   .description('Display runtime version information')
-  .action(async () => {
-    const versions = getRuntimeVersions();
-    console.log(chalk.bold(`@agentskillmania/sandbox version: ${pkg.version}\n`));
-    console.log(chalk.bold('Runtimes:'));
-    console.log(`  wasmtime: ${formatVersion(versions.wasmtime)}`);
-    console.log(`  busybox.wasm: ${formatVersion(versions.busybox)}`);
-  });
+  .action(showVersion);
 
 // install-runtime command
 program
   .command('install-runtime')
   .description('Install wasmtime runtime')
-  .action(async () => {
-    const { installRuntime } = await import('../../scripts/install-runtime.cjs');
-    const success = await installRuntime();
-    process.exit(success ? 0 : 1);
-  });
-
-function formatVersion(info: { found: boolean; version?: string; path?: string }): string {
-  if (!info.found) return chalk.red('not found');
-  return chalk.green(`${info.version} (${info.path})`);
-}
+  .action(installRuntimeCommand);
 
 program.parse();

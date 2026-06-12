@@ -115,7 +115,7 @@ describe('Sandbox', () => {
     it('should successfully execute simple shell command', async () => {
       const result = await sandbox.run('echo hello');
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('test output');
+      expect(result.stdout).toBe('test output');
       const args = mockSpawn.mock.calls[0][1];
       expect(args).toContain('wsh');
       expect(args).toContain('cd /workspace && echo hello');
@@ -242,6 +242,26 @@ describe('Sandbox', () => {
       sb.updateConfig({ timeout: 10000, allowNetwork: true });
 
       // Verify network args appear in spawn call
+      await sb.run('echo test');
+      const args = mockSpawn.mock.calls[0][1];
+      expect(args).toContain('tcp=y');
+      expect(args).toContain('inherit-network');
+    });
+
+    it('should partially update only timeout without changing network config', async () => {
+      mockSpawn.mockReturnValue({
+        stdout: { on: vi.fn() },
+        stderr: { on: vi.fn() },
+        on: vi.fn((event, callback) => {
+          if (event === 'close') setImmediate(() => callback(0));
+        }),
+        kill: vi.fn(),
+      });
+
+      const sb = new Sandbox({ timeout: 5000, allowNetwork: true });
+      sb.updateConfig({ timeout: 30000 });
+
+      // Verify timeout was updated and network is still enabled
       await sb.run('echo test');
       const args = mockSpawn.mock.calls[0][1];
       expect(args).toContain('tcp=y');

@@ -76,6 +76,20 @@ describe('runtime', () => {
       expect(paths.busybox).toMatch(/wasm[/\\]busybox\.wasm$/);
       expect(paths).not.toHaveProperty('micropython');
     });
+
+    it('should fallback to second candidate when first busybox not found', () => {
+      // Order of existsSync calls:
+      //   1. candidates[0]/busybox.wasm → false
+      //   2. candidates[1]/busybox.wasm → true
+      vi.mocked(existsSync)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true);
+
+      const paths = getWasmPaths();
+      expect(paths.busybox).toMatch(/busybox\.wasm$/);
+      // Verify existsSync was called for both candidates before returning
+      expect(existsSync).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('getRuntimeVersions', () => {
@@ -170,6 +184,23 @@ describe('runtime', () => {
 
       expect(execSync).toHaveBeenCalledWith(
         expect.stringContaining('scripts/install-runtime.cjs'),
+        expect.any(Object)
+      );
+    });
+
+    it('should select install script from second candidate when first missing', async () => {
+      vi.mocked(execSync).mockReturnValue('');
+      // Order: wasmtime check (false) → candidates[0] (false) → candidates[1] (true)
+      vi.mocked(existsSync)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(true);
+
+      await ensureRuntime();
+
+      expect(execSync).toHaveBeenCalledTimes(1);
+      expect(execSync).toHaveBeenCalledWith(
+        expect.stringContaining('install-runtime.cjs'),
         expect.any(Object)
       );
     });
