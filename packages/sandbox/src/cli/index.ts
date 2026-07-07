@@ -39,8 +39,6 @@ program
   .option('--allow-network', 'Allow network access')
   .option('--command-allowlist <cmds>', 'Command allowlist (comma-separated)')
   .option('--command-blocklist <cmds>', 'Command blocklist (comma-separated)')
-  .option('--network-allowlist <domains>', 'Network allowlist (comma-separated)')
-  .option('--network-blocklist <domains>', 'Network blocklist (comma-separated)')
   .argument('[command]', 'Command to execute after --');
 
 export interface CLIOptions {
@@ -49,15 +47,16 @@ export interface CLIOptions {
   allowNetwork?: string | boolean;
   commandAllowlist?: string;
   commandBlocklist?: string;
-  networkAllowlist?: string;
-  networkBlocklist?: string;
 }
 
 /**
  * Execute a command via the sandbox CLI.
  * Extracted from Commander action handler for testability.
  */
-export async function executeCommand(command: string | undefined, options: CLIOptions): Promise<void> {
+export async function executeCommand(
+  command: string | undefined,
+  options: CLIOptions
+): Promise<void> {
   if (!command || command.length === 0) {
     console.error(chalk.red('Error: No command specified'));
     console.error('Usage: exec-in-sandbox [options] -- <command>');
@@ -136,10 +135,7 @@ program.action(async (command, options) => {
 });
 
 // version command
-program
-  .command('version')
-  .description('Display runtime version information')
-  .action(showVersion);
+program.command('version').description('Display runtime version information').action(showVersion);
 
 // install-runtime command
 program

@@ -144,7 +144,8 @@ describe('Executor', () => {
       stdout: { on: vi.fn() },
       stderr: { on: vi.fn() },
       on: vi.fn((event: string, callback: Function) => {
-        if (event === 'error') setImmediate(() => callback(new Error('ENOENT: wasmtime not found')));
+        if (event === 'error')
+          setImmediate(() => callback(new Error('ENOENT: wasmtime not found')));
       }),
       kill: vi.fn(),
     });

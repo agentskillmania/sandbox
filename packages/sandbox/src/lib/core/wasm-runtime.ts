@@ -25,8 +25,6 @@ export interface WasmRuntimeConfig {
   sandboxDir: string;
   timeout: number;
   allowNetwork: boolean;
-  /** Additional --dir mappings for wasmtime */
-  extraDirs?: string[];
 }
 
 export class WasmRuntime {
@@ -83,8 +81,6 @@ export class WasmRuntime {
         }
       };
 
-      const extraDirArgs = (this.config.extraDirs ?? []).flatMap((dir) => ['--dir', dir]);
-
       const wasmtimeArgs = [
         '-W',
         'exceptions=y',
@@ -94,7 +90,6 @@ export class WasmRuntime {
         `${sandboxDir}::/workspace`,
         '--dir',
         `${tmpDir}::/tmp`,
-        ...extraDirArgs,
         ...this._buildNetworkArgs(allowNetwork),
         ...(modulePathToRun.endsWith('.cwasm') ? ['--allow-precompiled'] : []),
         modulePathToRun,

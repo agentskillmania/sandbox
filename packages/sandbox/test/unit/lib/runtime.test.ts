@@ -81,9 +81,7 @@ describe('runtime', () => {
       // Order of existsSync calls:
       //   1. candidates[0]/busybox.wasm → false
       //   2. candidates[1]/busybox.wasm → true
-      vi.mocked(existsSync)
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(true);
+      vi.mocked(existsSync).mockReturnValueOnce(false).mockReturnValueOnce(true);
 
       const paths = getWasmPaths();
       expect(paths.busybox).toMatch(/busybox\.wasm$/);

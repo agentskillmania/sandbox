@@ -121,26 +121,6 @@ describe('WasmRuntime', () => {
     expect(args).toContain('inherit-network');
   });
 
-  it('should add extraDirs before module path', async () => {
-    const wasm = new WasmRuntime({
-      wasmtimePath: '/mock/wasmtime',
-      sandboxDir: '/mock/sandbox',
-      timeout: 5000,
-      allowNetwork: false,
-      extraDirs: ['/tmp'],
-    });
-
-    await wasm.spawn('/mock/busybox.wasm', ['echo', 'test']);
-
-    const args = mockSpawn.mock.calls[0][1];
-    const sandboxIdx = args.indexOf('/mock/sandbox::/workspace');
-    const tmpIdx = args.indexOf('/tmp');
-    const moduleIdx = args.indexOf('/mock/busybox.wasm');
-
-    expect(tmpIdx).toBeGreaterThan(sandboxIdx);
-    expect(moduleIdx).toBeGreaterThan(tmpIdx);
-  });
-
   it('should reject on timeout', async () => {
     mockSpawn.mockReturnValue({
       stdout: { on: vi.fn() },
