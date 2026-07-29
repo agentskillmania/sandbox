@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { mkdtempSync } from 'node:fs';
@@ -161,7 +161,7 @@ export class Sandbox {
     if (scriptPath.endsWith('.py')) {
       const tmpScript = join(this.sandboxDir, '_sandbox_script.py');
       writeFileSync(tmpScript, scriptContent);
-      const result = await this._execWsh('python /workspace/_sandbox_script.py');
+      const result = await this._execWsh('python /_sandbox_script.py');
       rmSync(tmpScript, { force: true });
       return result;
     }
@@ -194,6 +194,27 @@ export class Sandbox {
         return;
       }
 
+      // Ensure AOT precompiled module exists (compile on-demand if missing).
+      // This eliminates JIT compilation overhead on every invocation — the
+      // .cwasm is compiled once and reused across all subsequent runs.
+      let modulePath = this.busyboxPath;
+      if (!modulePath.endsWith('.cwasm')) {
+        const cwasmPath = modulePath.replace(/\.wasm$/, '.cwasm');
+        if (!existsSync(cwasmPath)) {
+          try {
+            execSync(
+              `"${this.wasmtimePath}" compile -W exceptions=y "${modulePath}" -o "${cwasmPath}"`,
+              { encoding: 'utf-8', stdio: 'ignore' }
+            );
+            modulePath = cwasmPath;
+          } catch {
+            // compilation failed, fall back to JIT
+          }
+        } else {
+          modulePath = cwasmPath;
+        }
+      }
+
       // Create an isolated temp directory for this wasmtime instance.
       // wsh uses fixed paths like /tmp/_wsh_p_0 for pipe temp files;
       // without isolation, concurrent instances overwrite each other.
@@ -213,15 +234,20 @@ export class Sandbox {
         'exceptions=y',
         '-S',
         'cli=y',
+        // Map workspace as / (not /workspace). This makes the workspace
+        // the sandbox root — `..` from / has no parent, so ls -la and
+        // cd work naturally without EPERM errors. /tmp is a sibling
+        // preopen for temporary files.
         '--dir',
-        `${this.sandboxDir}::/workspace`,
+        `${this.sandboxDir}::/`,
         '--dir',
         `${tmpDir}::/tmp`,
         ...this._buildNetworkArgs(),
-        this.busyboxPath,
+        ...(modulePath.endsWith('.cwasm') ? ['--allow-precompiled'] : []),
+        modulePath,
         'wsh',
         '-c',
-        `cd /workspace && ${command}`,
+        `cd / && ${command}`,
       ];
 
       const proc = spawn(this.wasmtimePath, wasmtimeArgs);

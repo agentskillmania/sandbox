@@ -128,7 +128,7 @@ describe('Script Execution Integration Tests', () => {
 
       copyFileSync(scriptPath, join(sandboxDir, 'simple.py'));
 
-      const result = await sandbox.run('python /workspace/simple.py');
+      const result = await sandbox.run('python /simple.py');
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('Hello from Python script');
     }, 10000);

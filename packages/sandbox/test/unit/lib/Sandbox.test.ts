@@ -3,6 +3,7 @@ import { Sandbox } from '../../../src/lib/Sandbox.js';
 import { SecurityError, TimeoutError } from '../../../src/lib/types.js';
 import { readFileSync, existsSync, rmSync } from 'node:fs';
 import { mkdirp } from 'mkdirp';
+import { getWasmPaths } from '../../../src/lib/runtime.js';
 
 // Mock runtime functions
 vi.mock('../../../src/lib/runtime.js', async (importOriginal) => {
@@ -118,21 +119,21 @@ describe('Sandbox', () => {
       expect(result.stdout).toBe('test output');
       const args = mockSpawn.mock.calls[0][1];
       expect(args).toContain('wsh');
-      expect(args).toContain('cd /workspace && echo hello');
+      expect(args).toContain('cd / && echo hello');
     });
 
     it('should execute python command', async () => {
       const result = await sandbox.run("python -c 'print(42)'");
       expect(result.exitCode).toBe(0);
       const args = mockSpawn.mock.calls[0][1];
-      expect(args).toContain("cd /workspace && python -c 'print(42)'");
+      expect(args).toContain("cd / && python -c 'print(42)'");
     });
 
     it('should execute git command', async () => {
       const result = await sandbox.run('git --version');
       expect(result.exitCode).toBe(0);
       const args = mockSpawn.mock.calls[0][1];
-      expect(args).toContain('cd /workspace && git --version');
+      expect(args).toContain('cd / && git --version');
     });
 
     it('should allow all commands regardless of allowlist config', async () => {
@@ -365,6 +366,61 @@ describe('Sandbox', () => {
     it('should skip validation when command starts with --', async () => {
       const result = await sandbox.run('--help');
       expect(result.exitCode).toBe(0);
+    });
+  });
+
+  describe('cwasm AOT compilation', () => {
+    it('uses existing .cwasm when present (adds --allow-precompiled)', async () => {
+      // existsSync defaults to true for all paths, so .cwasm is "found"
+      await sandbox.run('echo test');
+      const args = mockSpawn.mock.calls[0][1];
+      // modulePath should be the .cwasm, and --allow-precompiled flag present
+      expect(args).toContain('--allow-precompiled');
+      expect(args).toContain('/mock/busybox.cwasm');
+    });
+
+    it('compiles .cwasm on-demand when missing', async () => {
+      const { execSync } = await import('node:child_process');
+      // .wasm exists, .cwasm does not → triggers compile
+      vi.mocked(existsSync).mockImplementation((p: string) => !String(p).endsWith('.cwasm'));
+
+      await sandbox.run('echo test');
+      // execSync should have been called to compile
+      expect(vi.mocked(execSync)).toHaveBeenCalled();
+      const compileCall = vi.mocked(execSync).mock.calls[0]?.[0] as string;
+      expect(compileCall).toContain('compile');
+      expect(compileCall).toContain('/mock/busybox.wasm');
+      expect(compileCall).toContain('/mock/busybox.cwasm');
+    });
+
+    it('falls back to JIT when compilation fails', async () => {
+      const { execSync } = await import('node:child_process');
+      vi.mocked(existsSync).mockImplementation((p: string) => !String(p).endsWith('.cwasm'));
+      vi.mocked(execSync).mockImplementation(() => {
+        throw new Error('compile failed');
+      });
+
+      await sandbox.run('echo test');
+      const args = mockSpawn.mock.calls[0][1];
+      // No --allow-precompiled because we fell back to JIT (.wasm)
+      expect(args).not.toContain('--allow-precompiled');
+      expect(args).toContain('/mock/busybox.wasm');
+    });
+
+    it('skips compilation when module already .cwasm', async () => {
+      const { execSync } = await import('node:child_process');
+      // Simulate busybox path already being a .cwasm
+      vi.mocked(getWasmPaths).mockReturnValueOnce({
+        busybox: '/mock/busybox.cwasm',
+      });
+      const sb = new Sandbox({ timeout: 5000 });
+
+      await sb.run('echo test');
+      const args = mockSpawn.mock.calls[0][1];
+      expect(args).toContain('--allow-precompiled');
+      expect(args).toContain('/mock/busybox.cwasm');
+      // execSync (compile) should NOT have been called
+      expect(vi.mocked(execSync)).not.toHaveBeenCalled();
     });
   });
 });

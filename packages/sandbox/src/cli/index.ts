@@ -19,8 +19,8 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 
 import { initializeSecurityConfig } from '../lib/config.js';
-import { Executor } from '../lib/core/executor.js';
-import { getRuntimeVersions, getWasmtimeExecutable, getWasmPaths } from '../lib/runtime.js';
+import { Sandbox } from '../lib/Sandbox.js';
+import { getRuntimeVersions } from '../lib/runtime.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
@@ -37,16 +37,12 @@ program
   .option('--timeout <ms>', 'Execution timeout (milliseconds)', '5000')
   .option('--sandbox-dir <dir>', 'Sandbox directory (default: auto temp dir)')
   .option('--allow-network', 'Allow network access')
-  .option('--command-allowlist <cmds>', 'Command allowlist (comma-separated)')
-  .option('--command-blocklist <cmds>', 'Command blocklist (comma-separated)')
   .argument('[command]', 'Command to execute after --');
 
 export interface CLIOptions {
   timeout: string;
   sandboxDir?: string;
   allowNetwork?: string | boolean;
-  commandAllowlist?: string;
-  commandBlocklist?: string;
 }
 
 /**
@@ -75,18 +71,14 @@ export async function executeCommand(
       ? { mode: commandSecurity.mode, list: commandSecurity.list }
       : undefined;
 
-  const wasmPaths = getWasmPaths();
-
-  const executor = new Executor({
-    wasmtimePath: getWasmtimeExecutable(),
-    busyboxPath: wasmPaths.busybox,
+  const sandbox = new Sandbox({
     sandboxDir: options.sandboxDir || 'auto',
     timeout: parseInt(options.timeout),
     allowNetwork: options.allowNetwork ? options.allowNetwork !== 'false' : false,
     commandPolicy,
   });
 
-  const result = await executor.exec({ command });
+  const result = await sandbox.run(command);
 
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);

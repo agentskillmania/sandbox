@@ -6,12 +6,8 @@ import {
   formatVersion,
 } from '../../../src/cli/index.js';
 import { initializeSecurityConfig } from '../../../src/lib/config.js';
-import { Executor } from '../../../src/lib/core/executor.js';
-import {
-  getWasmPaths,
-  getWasmtimeExecutable,
-  getRuntimeVersions,
-} from '../../../src/lib/runtime.js';
+import { Sandbox } from '../../../src/lib/Sandbox.js';
+import { getRuntimeVersions } from '../../../src/lib/runtime.js';
 
 // ---- mocks ----
 
@@ -19,14 +15,14 @@ vi.mock('../../../src/lib/config.js', () => ({
   initializeSecurityConfig: vi.fn(),
 }));
 
-const mockExecFn = vi.fn();
-vi.mock('../../../src/lib/core/executor.js', () => ({
-  Executor: vi.fn(),
+const mockRunFn = vi.fn();
+vi.mock('../../../src/lib/Sandbox.js', () => ({
+  Sandbox: vi.fn(() => ({
+    run: mockRunFn,
+  })),
 }));
 
 vi.mock('../../../src/lib/runtime.js', () => ({
-  getWasmPaths: vi.fn(() => ({ busybox: '/mock/busybox.wasm' })),
-  getWasmtimeExecutable: vi.fn(() => '/mock/wasmtime'),
   getRuntimeVersions: vi.fn(() => ({
     wasmtime: { found: true, version: '43.0.0', path: '/mock/wasmtime' },
     busybox: { found: true, path: '/mock/busybox.wasm' },
@@ -57,14 +53,8 @@ vi.mock('chalk', () => {
 
 // ---- helpers ----
 
-function mockExecutorResolve(result: { exitCode: number; stdout: string; stderr: string }) {
-  mockExecFn.mockResolvedValue(result);
-  vi.mocked(Executor).mockImplementation(() => {
-    const e = { exec: mockExecFn };
-    // need to return ExecResult shape, sandboxDirectory getter
-    Object.defineProperty(e, 'sandboxDirectory', { get: () => '/mock/sandbox' });
-    return e as any;
-  });
+function mockSandboxResolve(result: { exitCode: number; stdout: string; stderr: string }) {
+  mockRunFn.mockResolvedValue(result);
 }
 
 function mockSecurityConfig(policy?: { mode: string; list: string[] }) {
@@ -82,27 +72,25 @@ describe('executeCommand', () => {
     mockSecurityConfig();
   });
 
-  it('should create Executor and run the command', async () => {
-    mockExecutorResolve({ exitCode: 0, stdout: 'hello', stderr: '' });
+  it('should create Sandbox and run the command', async () => {
+    mockSandboxResolve({ exitCode: 0, stdout: 'hello', stderr: '' });
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
     await executeCommand('echo hello', { timeout: '5000' });
 
-    expect(Executor).toHaveBeenCalledWith(
+    expect(Sandbox).toHaveBeenCalledWith(
       expect.objectContaining({
-        wasmtimePath: '/mock/wasmtime',
-        busyboxPath: '/mock/busybox.wasm',
         timeout: 5000,
       })
     );
-    expect(mockExecFn).toHaveBeenCalledWith({ command: 'echo hello' });
+    expect(mockRunFn).toHaveBeenCalledWith('echo hello');
     expect(stdoutSpy).toHaveBeenCalledWith('hello');
     expect(exitSpy).toHaveBeenCalledWith(0);
   });
 
   it('should write stderr when present', async () => {
-    mockExecutorResolve({ exitCode: 1, stdout: '', stderr: 'error msg' });
+    mockSandboxResolve({ exitCode: 1, stdout: '', stderr: 'error msg' });
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
 
@@ -120,14 +108,14 @@ describe('executeCommand', () => {
     expect(vi.mocked(initializeSecurityConfig)).not.toHaveBeenCalled();
   });
 
-  it('should create Executor with commandPolicy when security config has policy', async () => {
+  it('should create Sandbox with commandPolicy when security config has policy', async () => {
     mockSecurityConfig({ mode: 'blacklist', list: ['rm', 'format'] });
-    mockExecutorResolve({ exitCode: 0, stdout: '', stderr: '' });
+    mockSandboxResolve({ exitCode: 0, stdout: '', stderr: '' });
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
     await executeCommand('ls', { timeout: '5000' });
 
-    expect(Executor).toHaveBeenCalledWith(
+    expect(Sandbox).toHaveBeenCalledWith(
       expect.objectContaining({
         commandPolicy: { mode: 'blacklist', list: ['rm', 'format'] },
       })
@@ -135,31 +123,30 @@ describe('executeCommand', () => {
     expect(exitSpy).toHaveBeenCalledWith(0);
   });
 
-  it('should pass sandboxDir to Executor', async () => {
-    mockExecutorResolve({ exitCode: 0, stdout: '', stderr: '' });
+  it('should pass sandboxDir to Sandbox', async () => {
+    mockSandboxResolve({ exitCode: 0, stdout: '', stderr: '' });
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
     await executeCommand('ls', { timeout: '5000', sandboxDir: '/custom/sandbox' });
 
-    expect(Executor).toHaveBeenCalledWith(
+    expect(Sandbox).toHaveBeenCalledWith(
       expect.objectContaining({ sandboxDir: '/custom/sandbox' })
     );
     expect(exitSpy).toHaveBeenCalledWith(0);
   });
 
-  it('should pass allowNetwork to Executor', async () => {
-    mockExecutorResolve({ exitCode: 0, stdout: '', stderr: '' });
+  it('should pass allowNetwork to Sandbox', async () => {
+    mockSandboxResolve({ exitCode: 0, stdout: '', stderr: '' });
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
     await executeCommand('ls', { timeout: '5000', allowNetwork: 'true' });
 
-    expect(Executor).toHaveBeenCalledWith(expect.objectContaining({ allowNetwork: true }));
+    expect(Sandbox).toHaveBeenCalledWith(expect.objectContaining({ allowNetwork: true }));
     expect(exitSpy).toHaveBeenCalledWith(0);
   });
 
-  it('should handle SecurityError from Executor', async () => {
-    mockExecutorResolve = vi.fn() as any;
-    vi.mocked(Executor).mockImplementation(() => {
+  it('should handle SecurityError from Sandbox', async () => {
+    vi.mocked(Sandbox).mockImplementationOnce(() => {
       const err = new Error('Denied');
       err.name = 'SecurityError';
       throw err;
@@ -170,22 +157,16 @@ describe('executeCommand', () => {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it('should handle TimeoutError from Executor', async () => {
-    vi.mocked(Executor).mockImplementation(() => {
-      const err = new Error('timed out');
-      err.name = 'TimeoutError';
-      throw err;
-    });
+  it('should handle TimeoutError from Sandbox', async () => {
+    mockRunFn.mockRejectedValueOnce(Object.assign(new Error('timed out'), { name: 'TimeoutError' }));
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
     await expect(executeCommand('sleep 100', { timeout: '1' })).rejects.toThrow('timed out');
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it('should handle generic error from Executor', async () => {
-    vi.mocked(Executor).mockImplementation(() => {
-      throw new Error('unexpected');
-    });
+  it('should handle generic error from Sandbox', async () => {
+    mockRunFn.mockRejectedValueOnce(new Error('unexpected'));
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
     await expect(executeCommand('bad', { timeout: '5000' })).rejects.toThrow('unexpected');
