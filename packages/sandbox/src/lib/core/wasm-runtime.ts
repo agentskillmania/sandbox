@@ -86,8 +86,12 @@ export class WasmRuntime {
         'exceptions=y',
         '-S',
         'cli=y',
+        // Map workspace as / (not /workspace). This makes the workspace
+        // the sandbox root — `..` from / has no parent, so ls -la and
+        // cd work naturally without EPERM errors. /tmp is a sibling
+        // preopen for temporary files.
         '--dir',
-        `${sandboxDir}::/workspace`,
+        `${sandboxDir}::/`,
         '--dir',
         `${tmpDir}::/tmp`,
         ...this._buildNetworkArgs(allowNetwork),

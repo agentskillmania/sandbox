@@ -45,25 +45,12 @@ export class Executor {
     const raw = await this.wasm.spawn(this.busyboxPath, [
       'wsh',
       '-c',
-      `cd /workspace && ${command}`,
+      `cd / && ${command}`,
     ]);
-
-    // wasmtime's preopen model makes the parent of /workspace (= sandbox
-    // root /) return EPERM on stat. busybox's `ls -a` stats `..` and emits
-    // "ls: ./..: Operation not permitted". This is a known wasmtime
-    // sandboxing artifact, not a real error — filter it from output so the
-    // AI doesn't get confused by noise.
-    const NOISE_PATTERNS = [
-      /^ls: \.\/\.\.: Operation not permitted\r?\n?/m,
-      /^ls: \.\.: Operation not permitted\r?\n?/m,
-    ];
 
     // wsh pipe output goes to stderr (freopen cannot restore stdout)
     // merge stderr into stdout to match expected behavior
-    let stdout = raw.stderr ? raw.stdout + '\n' + raw.stderr : raw.stdout;
-    for (const pattern of NOISE_PATTERNS) {
-      stdout = stdout.replace(pattern, '');
-    }
+    const stdout = raw.stderr ? raw.stdout + '\n' + raw.stderr : raw.stdout;
 
     return {
       stdout,
