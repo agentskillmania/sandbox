@@ -22,7 +22,7 @@ A WASM sandbox for executing shell commands, Python code, and Git operations in 
 - **Git**: libgit2 1.9.2 — clone, log, status, diff, commit, etc.
 - **Python**: MicroPython 1.27 with 30+ stdlib modules frozen in (see below)
 - **Network**: TCP/UDP sockets, DNS, TLS (mbedTLS), HTTP (requests library)
-- **Filesystem isolation**: only `/workspace` and `/tmp` visible, everything else blocked
+- **Filesystem isolation**: sandbox workspace mounted at `/` (root), `/tmp` for temp files, everything else blocked
 
 ## Install
 
@@ -56,7 +56,7 @@ The `--` separator is required: options before, command after.
 | Option                       | Default   | Description                     |
 | ---------------------------- | --------- | ------------------------------- |
 | `--timeout <ms>`             | 5000      | Execution timeout               |
-| `--sandbox-dir <dir>`        | auto temp | Host dir mapped to `/workspace` |
+| `--sandbox-dir <dir>`        | auto temp | Host dir mapped to `/` (root)   |
 | `--allow-network`            | off       | Enable network                  |
 | `--command-allowlist <cmds>` | -         | Comma-separated allowlist       |
 | `--command-blocklist <cmds>` | -         | Comma-separated blocklist       |
@@ -88,9 +88,9 @@ Returns `{ stdout: string, stderr: string, exitCode: number }`.
 
 ## Filesystem Isolation
 
-- `/workspace` → your sandbox directory (read-write)
+- `/` → your sandbox workspace directory (read-write)
 - `/tmp` → isolated temp dir per execution (auto-cleaned)
-- Everything else (`/etc`, `/home`, `../`) is blocked by wasmtime
+- Everything else (`/etc`, `/home`, `../`) is blocked by wasmtime preopen boundaries
 
 ## Requirements
 

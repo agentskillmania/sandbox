@@ -22,7 +22,7 @@ WASM 沙箱，用于在隔离环境中执行 Shell 命令、Python 代码和 Git
 - **Git**: libgit2 1.9.2 — clone、log、status、diff、commit 等
 - **Python**: MicroPython 1.27，内置 30+ 标准库模块（见下方列表）
 - **网络**: TCP/UDP 套接字、DNS、TLS（mbedTLS）、HTTP（requests 库）
-- **文件系统隔离**: 仅可见 `/workspace` 和 `/tmp`，其余全部阻断
+- **文件系统隔离**: 工作目录挂载为 `/`（根），`/tmp` 用于临时文件，其余全部阻断
 
 ## 安装
 
@@ -56,7 +56,7 @@ exec-in-sandbox -- "git log --oneline"
 | 选项                         | 默认值       | 说明                           |
 | ---------------------------- | ------------ | ------------------------------ |
 | `--timeout <ms>`             | 5000         | 执行超时时间                   |
-| `--sandbox-dir <dir>`        | 自动临时目录 | 映射到 `/workspace` 的宿主目录 |
+| `--sandbox-dir <dir>`        | 自动临时目录 | 映射为 `/`（根）的宿主目录     |
 | `--allow-network`            | 关闭         | 启用网络                       |
 | `--command-allowlist <cmds>` | -            | 逗号分隔的白名单               |
 | `--command-blocklist <cmds>` | -            | 逗号分隔的黑名单               |
@@ -88,9 +88,9 @@ console.log(result.exitCode); // 0
 
 ## 文件系统隔离
 
-- `/workspace` → 你的沙箱目录（读写）
+- `/` → 你的工作目录（读写）
 - `/tmp` → 每次执行独立的临时目录（自动清理）
-- 其余所有路径（`/etc`、`/home`、`../`）被 wasmtime 阻断
+- 其余所有路径（`/etc`、`/home`、`../`）被 wasmtime preopen 边界阻断
 
 ## 运行要求
 
