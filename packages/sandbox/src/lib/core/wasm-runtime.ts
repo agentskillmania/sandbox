@@ -13,21 +13,12 @@
 
 import { spawn, execSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { ExecResult } from './types.js';
 import { TimeoutError } from '../types.js';
-
-/**
- * Recursively copy directory contents (Node 16.7+ has fs.cpSync).
- * Used to populate the virtual root's workspace/ before wasmtime launch.
- */
-function cpRecursive(src: string, dest: string): void {
-  if (!existsSync(src)) return;
-  cpSync(src, dest, { recursive: true, force: true });
-}
 
 export interface WasmRuntimeConfig {
   wasmtimePath: string;
@@ -76,23 +67,15 @@ export class WasmRuntime {
         }
       }
 
-      // Create a virtual root directory for this wasmtime instance.
-      // The root contains workspace/ and tmp/ as real subdirectories.
-      // Mapping root::/ as a single preopen lets `ls -la` stat `..`
-      // (which resolves to /) without EPERM — previously each dir was
-      // a separate preopen, making `..` unreachable.
-      const rootDir = join(tmpdir(), `sandbox-root-${randomUUID()}`);
-      const tmpDir = join(rootDir, 'tmp');
-      const wsDir = join(rootDir, 'workspace');
+      // Create an isolated temp directory for this wasmtime instance.
+      // wsh uses fixed paths like /tmp/_wsh_p_0 for pipe temp files;
+      // without isolation, concurrent instances overwrite each other.
+      const tmpDir = join(tmpdir(), `sandbox-tmp-${randomUUID()}`);
       mkdirSync(tmpDir, { recursive: true });
-      mkdirSync(wsDir, { recursive: true });
-      // Copy workspace contents into the virtual root's workspace/
-      // (symlinks don't work — wasmtime doesn't follow them across preopen boundaries)
-      cpRecursive(sandboxDir, wsDir);
 
       const cleanup = () => {
         try {
-          rmSync(rootDir, { recursive: true, force: true });
+          rmSync(tmpDir, { recursive: true, force: true });
         } catch {
           // ignore cleanup errors
         }
@@ -104,7 +87,9 @@ export class WasmRuntime {
         '-S',
         'cli=y',
         '--dir',
-        `${rootDir}::/`,
+        `${sandboxDir}::/workspace`,
+        '--dir',
+        `${tmpDir}::/tmp`,
         ...this._buildNetworkArgs(allowNetwork),
         ...(modulePathToRun.endsWith('.cwasm') ? ['--allow-precompiled'] : []),
         modulePathToRun,
