@@ -19,8 +19,8 @@ import chalk from 'chalk';
 import { Command } from 'commander';
 
 import { initializeSecurityConfig } from '../lib/config.js';
-import { Sandbox } from '../lib/Sandbox.js';
 import { getRuntimeVersions } from '../lib/runtime.js';
+import { Sandbox } from '../lib/Sandbox.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../../package.json');
