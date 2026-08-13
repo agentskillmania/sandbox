@@ -36,6 +36,9 @@ wasmtime v43 会在首次使用时自动安装到 `~/.agentskillmania/sandbox/wa
 npx exec-in-sandbox install-runtime
 ```
 
+> **pnpm 用户注意**：pnpm 10+ 默认不执行依赖的 postinstall 脚本，运行时不会被预装。
+> 请执行 `pnpm approve-builds` 并批准 `@agentskillmania/sandbox`，或用上面的命令手动安装运行时。
+
 ## 命令行使用
 
 ```bash

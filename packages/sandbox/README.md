@@ -36,6 +36,10 @@ wasmtime v43 is auto-installed to `~/.agentskillmania/sandbox/wasmtime/` on firs
 npx exec-in-sandbox install-runtime
 ```
 
+> **pnpm users**: pnpm 10+ skips dependency postinstall scripts by default, so the
+> runtime is not pre-installed. Run `pnpm approve-builds` and approve
+> `@agentskillmania/sandbox`, or install the runtime manually with the command above.
+
 ## CLI Usage
 
 ```bash
